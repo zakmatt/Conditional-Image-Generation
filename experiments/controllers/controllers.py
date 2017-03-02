@@ -5,6 +5,8 @@ import numpy as np
 import os
 import theano
 
+import matplotlib.pyplot as plt
+
 EXTENSIONS = ['png', 'jpg']
 theano.config.floatX = 'float32'
 
@@ -16,7 +18,8 @@ def load_data(directories, mask = None):
             ext = filename.split('.')
             if ext[-1].lower() not in EXTENSIONS:
                 continue
-            image = cv2.imread(filename)
+            print(filename)
+            image = cv2.imread(filename).astype(np.float32)
             image_list.append(image)
             
         return image_list
@@ -35,13 +38,14 @@ def load_data(directories, mask = None):
             mask = np.ones(image.shape)
             l = int(scale * image.shape[0]) - 1
             u = int((1.0 - scale) * image.shape[0])
-            print(l,u)
             mask[l:u, l:u, :] = 0.0
 
         # create input and output of the nn
         dataset_x = dataset * mask
-        dataset_y = dataset * (1 - mask)
-
+        # TODO: 
+        # 1. Train on full images
+        # 2. cut just centre part
+        dataset_y = dataset # * (1 - mask)
         # make shared variables of input and output
         shared_x = theano.shared(np.asanyarray(dataset_x,
                                                dtype = theano.config.floatX))
@@ -62,7 +66,7 @@ def load_data(directories, mask = None):
     return dataset_x, dataset_y
         
 def search_dir(directory):
-    directories = []
+    directories = [os.path.join(directory, '*')]
     for folder_name in os.listdir(directory):
         dir = os.path.join(directory, folder_name)
         if os.path.isfile(dir):
@@ -73,6 +77,7 @@ def search_dir(directory):
         
         
 if __name__ == '__main__':
-    path = '../dataset/'
+    path = '../dataset/training'
     directories = search_dir(path)
+    #print(directories)
     dataset_x, dataset_y = load_data(directories)
