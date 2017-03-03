@@ -23,7 +23,7 @@ class Generator(object):
         layer_0 = ConvolutionalLayer(
                 input = input_layer,
                 filter_shape = (64, 3, 4, 4),
-                image_shape = (batch_size, 3, 64, 64),
+                input_shape = (batch_size, 3, 64, 64),
                 poolsize = (2, 2)
                 )
         # create output for Convolutional layer
@@ -36,7 +36,7 @@ class Generator(object):
         layer_1 = ConvolutionalLayer(
                 input = layer_0_output, 
                 filter_shape = (128, 64, 4, 4),
-                image_shape = (batch_size, 64, 32, 32),
+                input_shape = (batch_size, 64, 32, 32),
                 poolsize = (2, 2)
                 )
         
@@ -51,7 +51,7 @@ class Generator(object):
         layer_2 = ConvolutionalLayer(
                 input = layer_1_output,
                 filter_shape = (256, 128, 4, 4),
-                image_shape = (batch_size, 128, 16, 16),
+                input_shape = (batch_size, 128, 16, 16),
                 poolsize = (2, 2)
                 )
         
@@ -64,7 +64,7 @@ class Generator(object):
         layer_3 = ConvolutionalLayer(
                 input = layer_2_output,
                 filter_shape = (512, 256, 4, 4),
-                image_shape = (batch_size, 256, 8, 8),
+                input_shape = (batch_size, 256, 8, 8),
                 poolsize = (2, 2)
                 )
         
@@ -77,7 +77,7 @@ class Generator(object):
         layer_4 = ConvolutionalLayer(
                 input = layer_3_output,
                 filter_shape = (512, 512, 4, 4),
-                image_shape = (batch_size, 512, 4, 4),
+                input_shape = (batch_size, 512, 4, 4),
                 poolsize = (2, 2)
                 )
         
@@ -90,7 +90,7 @@ class Generator(object):
         layer_5 = ConvolutionalLayer(
                 input = layer_3_output,
                 filter_shape = (512, 512, 4, 4),
-                image_shape = (batch_size, 512, 4, 4),
+                input_shape = (batch_size, 512, 4, 4),
                 poolsize = (2, 2)
                 )
         
