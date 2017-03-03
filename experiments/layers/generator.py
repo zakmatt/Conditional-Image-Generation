@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from convolutional_layer import ConvolutionalLayer
+from deconvolutional_layer import DeconvolutionalLayer
 from math import sqrt
 import numpy as np
 import theano.tensor as T
@@ -90,7 +91,7 @@ class Generator(object):
         layer_5 = ConvolutionalLayer(
                 input = layer_3_output,
                 filter_shape = (512, 512, 4, 4),
-                input_shape = (batch_size, 512, 4, 4),
+                input_shape = (batch_size, 512, 2, 2),
                 poolsize = (2, 2)
                 )
         
@@ -102,3 +103,101 @@ class Generator(object):
         #############
         ## Decoder ##
         #############
+        
+        layer_6 = DeconvolutionalLayer(
+                input = layer_5_output,
+                filter_shape = (512, 512, 4, 4),
+                input_shape = (batch_size, 512, 1, 1),
+                scale = 2
+                )
+        
+        # Batch normalisation
+        layer_6_batch_norm = None
+        # Dropout
+        layer_6_dropout = None
+        # ReLU
+        layer_6_activation_output = None
+        # Merge with the Encoder layer
+        layer_6_output = layer_6_activation_output + layer_4_output
+        
+        layer_7 = DeconvolutionalLayer(
+                input = layer_6_output,
+                filter_shape = (512, 512, 4, 4),
+                input_shape = (batch_size, 512, 2, 2),
+                scale = 2
+                )
+        
+        # Batch normalisation
+        layer_7_batch_norm = None
+        # Dropout
+        layer_7_dropout = None
+        # ReLU
+        layer_7_activation_output = None
+        # Merge with the Encoder layer
+        layer_7_output = layer_7_activation_output + layer_3_output
+        
+        layer_8 = DeconvolutionalLayer(
+                input = layer_7_output,
+                filter_shape = (256, 512, 4, 4),
+                input_shape = (batch_size, 512, 4, 4),
+                scale = 2
+                )
+        
+        # Batch normalisation
+        layer_8_batch_norm = None
+        # Dropout
+        layer_8_dropout = None
+        # ReLU
+        layer_8_activation_output = None
+        # Merge with the Encoder layer
+        layer_8_output = layer_8_activation_output + layer_2_output
+        
+        
+        layer_9 = DeconvolutionalLayer(
+                input = layer_8_output,
+                filter_shape = (128, 256, 4, 4),
+                input_shape = (batch_size, 256, 8, 8),
+                scale = 2
+                )
+        
+        # Batch normalisation
+        layer_9_batch_norm = None
+        # Dropout ??????
+        layer_9_dropout = None
+        # ReLU
+        layer_9_activation_output = None
+        # Merge with the Encoder layer
+        layer_9_output = layer_9_activation_output + layer_1_output
+        
+        
+        layer_10 = DeconvolutionalLayer(
+                input = layer_9_output,
+                filter_shape = (64, 128, 4, 4),
+                input_shape = (batch_size, 128, 16, 16),
+                scale = 2
+                )
+        
+        # Batch normalisation
+        layer_10_batch_norm = None
+        # Dropout ????
+        layer_10_dropout = None
+        # ReLU
+        layer_10_activation_output = None
+        # Merge with the Encoder layer
+        layer_10_output = layer_10_activation_output + layer_0_output
+        
+        layer_11 = DeconvolutionalLayer(
+                input = layer_10_output,
+                filter_shape = (3, 64, 4, 4),
+                input_shape = (batch_size, 64, 32, 32),
+                scale = 2
+                )
+        
+        # Batch normalisation
+        layer_11_batch_norm = None
+        # ReLU
+        layer_11_activation_output = None
+        
+        # add input to output and convolve - one option
+        # generator_output = layer_11_activation_output + input
+        generator_output = layer_11_activation_output

@@ -72,7 +72,3 @@ class ConvolutionalLayer(object):
         self.params = [self.W, self.b]
 
     #def output(activation)
-        
-if __name__ == '__main__':
-    cl = ConvolutionalLayer('ala', 'blabl')
-    print(cl.input, cl.temp)

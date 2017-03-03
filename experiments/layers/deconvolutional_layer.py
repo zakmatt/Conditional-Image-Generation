@@ -55,4 +55,3 @@ class DeconvolutionalLayer(object):
         self.output = self.convolution_output + self.b.dimshuffle('x', 0, 'x', 'x')
         
         self.params = [self.W, self.b]
-        
