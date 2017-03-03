@@ -57,12 +57,13 @@ class ConvolutionalLayer(object):
         
         if poolsize is not None:
             # pool each feature map individually using maxpooling
-            self.output = pool.pool_2d(
+            self.pooled_out = pool.pool_2d(
                     input = self.convolution_output,
                     ds = poolsize,
                     ignore_border = True
                     )
-            
+        
+        self.output = self.pooled_out + self.b.dimshuffle('x', 0, 'x', 'x')
         # calculate the output of the layer
         #self.output = T.nnet.relu(pooled_out + 
         #                          self.b.dimshuffle('x', 0, 'x', 'x'))

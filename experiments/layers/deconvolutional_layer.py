@@ -45,12 +45,14 @@ class DeconvolutionalLayer(object):
         upsampled_out = input.repeat(scale, axis = 2).repeat(scale, axis = 3)
         
         # convolve upsampled feature maps with filters
-        self.output = conv2d(
+        self.convolution_output = conv2d(
                 input = upsampled_out,
                 filters = self.W,
                 filter_shape = filter_shape,
                 border_mode = filter_shape[2] - 1
                 )
+        
+        self.output = self.convolution_output + self.b.dimshuffle('x', 0, 'x', 'x')
         
         self.params = [self.W, self.b]
         
