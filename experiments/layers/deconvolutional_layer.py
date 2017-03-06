@@ -1,57 +1,77 @@
 #!/usr/bin/env python3
-from math import sqrt
+from layer import Layer
 import numpy as np
 import theano
+import theano.tensor as T
 from theano.tensor.nnet import conv2d
+#from utils import initialize_bias, initialize_weights
 
-class DeconvolutionalLayer(object):
+theano.config.floatX = 'float32'
+
+class DeconvolutionalLayer(Layer):
     
-    def __init__(self, input, filter_shape, input_shape, poolsize=(1,1), scale = 2):
-        """
-        Deconvolution layer
+    def __init__(self, input, filter_shape, input_shape, 
+                 is_batch_norm, is_dropout, scale = 2):
+        super().__init__(filter_shape, input_shape, 
+                       is_batch_norm, is_dropout)
         
-        :type input: theano.tensor.dtensor4
-        :param input: symbolic image tensor of shape image_shape
-        
-        :type filter_shape: a tuple or a list of 4. elements
-        :param filter_shape: (number of filters, number of input feature maps,
-                              filter height, filter width)
-        
-        :type image_shape: a tuple of a list of 4. elements
-        :param image_shape: (batch size, number of channels or feature maps,
-                             image height, image width)
-        
-        :type poolsize: a tuple or a list of 2 elements
-        :param poolsize: pooling size - downsampling. (width, height)
-        """
-        
-        self.input = input
-        
-        assert input_shape[1] == filter_shape[1]
-        
-        # number of input to a feature map
-        n_in = np.prod(filter_shape[1:])
-        W = np.asanyarray(
-                np.random.rand(size = filter_shape) * sqrt(2.0/n_in),
-                dtype = theano.config.floatX
-                )
-        # One bias per feature map
-        b = np.zeros((filter_shape[0], ), dtype = theano.config.floatX)
-        
-        self.W = theano.shared(W, borrow = True)
-        self.b = theano.shared(b, borrow = True)
-        
+        self.scale = scale
         # upsample input scale times
         upsampled_out = input.repeat(scale, axis = 2).repeat(scale, axis = 3)
+        self.input = upsampled_out
+        #self.input_shape = upsampled_out.shape
+    
+    def output(self, activation, alpha = 0.2):
         
-        # convolve upsampled feature maps with filters
-        self.convolution_output = conv2d(
-                input = upsampled_out,
-                filters = self.W,
-                filter_shape = filter_shape,
-                border_mode = filter_shape[2] - 1
-                )
+        # Convolve input feature maps with filters
+        # conv2d from tensor.nnet implements the convolutional layers 
+        # present in convolutional neural networks
+        # (where filters are 3D and pool over several input channels)
+        print(self.filter_shape[2] - 1)
+        print(self.filter_shape)
+        print(self.input)
+        print(self.W.shape)
+        #self.output = 0
+
+        output = conv2d(
+                input=self.input,
+                filters=self.W,
+                input_shape=self.input_shape,
+                filter_shape=self.filter_shape,
+                border_mode=self.filter_shape[2] - 1,
+                subsample=(self.filter_shape[2], self.filter_shape[2])
+                                               )
+            
+        output += self.b.dimshuffle('x', 0, 'x', 'x')
         
-        self.output = self.convolution_output + self.b.dimshuffle('x', 0, 'x', 'x')
-        
-        self.params = [self.W, self.b]
+        if activation == 'relu':
+            self.output = T.nnet.relu(output)
+        elif activation == 'lrelu':
+            self.output = T.nnet.relu(output, alpha)
+        elif activation == 'tanh':
+            self.output = T.tanh(output)
+        elif activation == None:
+            self.output = output
+
+        return self.output
+    
+if __name__ == '__main__':
+    inputss = np.random.randn(30, 512, 1, 1) * 100
+    inputss = theano.shared(value = np.asanyarray(inputss, dtype = theano.config.floatX))
+    x = T.tensor4('x')
+    input_x = x.reshape((30, 512, 1, 1))
+    layer = DeconvolutionalLayer(input=input_x, filter_shape= (512, 512, 4, 4),
+                                 input_shape=(30, 512, 2, 2), 
+                                 is_batch_norm = False, 
+                                 is_dropout = True,
+                                 scale = 2)
+    #activation = T.ls
+    a = theano.function(
+            [],
+            layer.output('lrelu'),
+            givens = {
+                    x: inputss
+                    }
+            )
+    temp = a()
+    
