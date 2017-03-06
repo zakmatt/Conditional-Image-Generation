@@ -6,7 +6,7 @@ from utils import initialize_weights, initialize_bias
 class Layer(object):
     
     def __init__(self, filter_shape, input_shape, 
-                 is_batch_norm, is_dropout):
+                 is_batch_norm):
         """
         Convolution layer with pooling
         
@@ -29,7 +29,6 @@ class Layer(object):
         self.input_shape = input_shape
         self.filter_shape = filter_shape
         self.is_batch_norm = is_batch_norm
-        self.is_dropout = is_dropout
         
         # number of input to a feature map
         n_in = np.prod(filter_shape[1:])

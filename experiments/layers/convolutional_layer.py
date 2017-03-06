@@ -10,9 +10,9 @@ theano.config.floatX = 'float32'
 class ConvolutionalLayer(Layer):
     
     def __init__(self, input, filter_shape, input_shape, 
-                 is_batch_norm, is_dropout, poolsize=(2,2)):
+                 is_batch_norm, poolsize=(2,2)):
         super().__init__(filter_shape, input_shape, 
-                       is_batch_norm, is_dropout)
+                       is_batch_norm)
         self.input = input
         self.poolsize = poolsize
         
@@ -57,7 +57,7 @@ if __name__ == '__main__':
     inputss = theano.shared(value = np.asanyarray(inputss, dtype = theano.config.floatX))
     x = T.tensor4('x')
     input_x = x.reshape((30, 3, 64, 64))
-    layer = ConvolutionalLayer(input_x, (64, 3, 4, 4), (30, 3, 64, 64), False, False)
+    layer = ConvolutionalLayer(input_x, (64, 3, 4, 4), (30, 3, 64, 64), False)
 
     #activation = T.ls
     a = theano.function(

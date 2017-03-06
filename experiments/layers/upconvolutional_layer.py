@@ -8,12 +8,12 @@ from theano.tensor.nnet import conv2d
 
 theano.config.floatX = 'float32'
 
-class DeconvolutionalLayer(Layer):
+class UpconvolutionalLayer(Layer):
     
     def __init__(self, input, filter_shape, input_shape, 
-                 is_batch_norm, is_dropout, scale = 2):
+                 is_batch_norm, scale = 2):
         super().__init__(filter_shape, input_shape, 
-                       is_batch_norm, is_dropout)
+                       is_batch_norm)
         
         self.scale = scale
         # upsample input scale times
@@ -27,11 +27,6 @@ class DeconvolutionalLayer(Layer):
         # conv2d from tensor.nnet implements the convolutional layers 
         # present in convolutional neural networks
         # (where filters are 3D and pool over several input channels)
-        print(self.filter_shape[2] - 1)
-        print(self.filter_shape)
-        print(self.input)
-        print(self.W.shape)
-        #self.output = 0
 
         output = conv2d(
                 input=self.input,
@@ -60,10 +55,9 @@ if __name__ == '__main__':
     inputss = theano.shared(value = np.asanyarray(inputss, dtype = theano.config.floatX))
     x = T.tensor4('x')
     input_x = x.reshape((30, 512, 1, 1))
-    layer = DeconvolutionalLayer(input=input_x, filter_shape= (512, 512, 4, 4),
+    layer = UpconvolutionalLayer(input=input_x, filter_shape= (512, 512, 4, 4),
                                  input_shape=(30, 512, 2, 2), 
-                                 is_batch_norm = False, 
-                                 is_dropout = True,
+                                 is_batch_norm = False,
                                  scale = 2)
     #activation = T.ls
     a = theano.function(
