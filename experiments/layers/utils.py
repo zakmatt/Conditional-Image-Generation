@@ -6,7 +6,7 @@ import theano
 
 theano.config.floatX = 'float32'
 
-def dropout_from_layer(layer, probability):
+def dropout_from_layer(layer, probability = 0.5):
     '''
     probability is a probability of droping a unit in a layer
     '''

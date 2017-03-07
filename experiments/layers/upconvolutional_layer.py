@@ -68,4 +68,5 @@ if __name__ == '__main__':
                     }
             )
     temp = a()
+    print(temp[0, 0])
     
