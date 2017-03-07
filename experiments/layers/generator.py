@@ -31,6 +31,7 @@ class Generator(object):
         # create output for Convolutional layer
         # LeakyReLU alpha = 0.2
         layer_0_output = layer_0.output(activation = 'lrelu', alpha = 0.2)
+        self.dropout_layers.append[layer_0]
         
         # maxpooling reduces the size (32 / 2, 32 / 2) = (16, 16)
         # filter shape: # of filters, filter depth, length, width
@@ -46,6 +47,7 @@ class Generator(object):
         # create output for Convolutional layer
         # LeakyReLU alpha = 0.2
         layer_1_output = layer_1.output(activation = 'lrelu', alpha = 0.2)
+        self.dropout_layers.append[layer_1]
         
         # maxpooling reduces the size (16 / 2, 16 / 2) = (8, 8)
         # filter shape: # of filters, input depth, filter shape
@@ -58,6 +60,7 @@ class Generator(object):
                 )
         # LeakyReLU
         layer_2_output = layer_2.output(activation = 'lrelu', alpha = 0.2)
+        self.dropout_layers.append[layer_2]
         
         # maxpooling reduces the size (8 / 2, 8 / 2) = (4, 4)
         layer_3 = ConvolutionalLayer(
@@ -70,7 +73,8 @@ class Generator(object):
         
         # LeakyReLU
         layer_3_output = layer_3.output(activation = 'lrelu', alpha = 0.2)
-
+        self.dropout_layers.append[layer_3]
+        
         # maxpooling reduces the size (4 / 2, 4 / 2) = (2, 2)        
         layer_4 = ConvolutionalLayer(
                 input = layer_3_output,
@@ -82,6 +86,7 @@ class Generator(object):
         
         # LeakyReLU
         layer_4_output = layer_4.output(activation = 'lrelu', alpha = 0.2)
+        self.dropout_layers.append[layer_4]
         
         # maxpooling reduces the size (2 / 2, 2 / 2) = (1, 1)        
         layer_5 = ConvolutionalLayer(
@@ -94,6 +99,7 @@ class Generator(object):
         
         # LeakyReLU
         layer_5_output = layer_5.output(activation = 'lrelu', alpha = 0.2)
+        self.dropout_layers.append[layer_5]
         
         #############
         ## Decoder ##
@@ -112,6 +118,7 @@ class Generator(object):
                                                    probability = 0.5)
         # Merge with the Encoder layer
         layer_6_output = layer_6_activation_output + layer_4_output
+        self.dropout_layers.append[layer_6]
         
         layer_7 = DropoutUpconvLayer(
                 input = layer_6_output,
@@ -125,6 +132,7 @@ class Generator(object):
                                                    probability = 0.5)
         # Merge with the Encoder layer
         layer_7_output = layer_7_activation_output + layer_3_output
+        self.dropout_layers.append[layer_7]
         
         layer_8 = DropoutUpconvLayer(
                 input = layer_7_output,
@@ -139,7 +147,7 @@ class Generator(object):
                                                    probability = 0.5)
         # Merge with the Encoder layer
         layer_8_output = layer_8_activation_output + layer_2_output
-        
+        self.dropout_layers.append[layer_8]
         
         layer_9 = UpconvolutionalLayer(
                 input = layer_8_output,
@@ -152,7 +160,7 @@ class Generator(object):
         layer_9_activation_output = layer_9.output(activation = 'relu')
         # Merge with the Encoder layer
         layer_9_output = layer_9_activation_output + layer_1_output
-        
+        self.dropout_layers.append[layer_9]
         
         layer_10 = UpconvolutionalLayer(
                 input = layer_9_output,
@@ -165,6 +173,7 @@ class Generator(object):
         layer_10_activation_output = layer_10.output(activation = 'relu')
         # Merge with the Encoder layer
         layer_10_output = layer_10_activation_output + layer_0_output
+        self.dropout_layers.append[layer_10]
         
         layer_11 = UpconvolutionalLayer(
                 input = layer_10_output,
@@ -176,7 +185,11 @@ class Generator(object):
 
         # ReLU
         layer_11_activation_output = layer_11.output(activation = 'tanh')
+        self.dropout_layers.append[layer_11]
         
         # add input to output and convolve - one option
         # generator_output = layer_11_activation_output + input
         self.generator_output = layer_11_activation_output
+        
+        self.params = [param for layer in self.dropout_layers 
+                       for param in layer.params]
