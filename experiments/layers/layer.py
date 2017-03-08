@@ -36,8 +36,8 @@ class Layer(object):
         # One bias per feature map
         b = initialize_bias(filter_shape)
         
-        self.W = theano.shared(W, borrow = True)
-        self.b = theano.shared(b, borrow = True)
+        self.W = theano.shared(W, name = 'W', borrow = True)
+        self.b = theano.shared(b, name = 'b', borrow = True)
         
         # parameters of the layer
         self.params = [self.W, self.b]

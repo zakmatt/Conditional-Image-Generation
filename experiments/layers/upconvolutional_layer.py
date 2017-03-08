@@ -4,7 +4,7 @@ import numpy as np
 import theano
 import theano.tensor as T
 from theano.tensor.nnet import conv2d
-#from utils import initialize_bias, initialize_weights
+from utils import batchnorm
 
 theano.config.floatX = 'float32'
 
@@ -36,6 +36,16 @@ class UpconvolutionalLayer(Layer):
                 border_mode=self.filter_shape[2] - 1,
                 subsample=(self.filter_shape[2], self.filter_shape[2])
                                                )
+        
+        if self.is_batch_norm:
+            self.gamma = theano.shared(value = np.ones(
+                    (self.filter_shape[0],), dtype=theano.config.floatX
+                    ), name='gamma')
+            self.beta = theano.shared(value = np.zeros(
+                    (self.filter_shape[0],), dtype=theano.config.floatX
+                    ), name='beta')
+            self.params += [self.gamma, self.beta]
+            output = batchnorm(output, self.gamma, self.beta)
             
         output += self.b.dimshuffle('x', 0, 'x', 'x')
         
@@ -57,7 +67,7 @@ if __name__ == '__main__':
     input_x = x.reshape((30, 512, 1, 1))
     layer = UpconvolutionalLayer(input=input_x, filter_shape= (512, 512, 4, 4),
                                  input_shape=(30, 512, 2, 2), 
-                                 is_batch_norm = False,
+                                 is_batch_norm = True,
                                  scale = 2)
     #activation = T.ls
     a = theano.function(
