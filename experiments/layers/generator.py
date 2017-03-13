@@ -17,9 +17,9 @@ class Generator(object):
         
         input_layer = input
         
-        # Construct the first convolutional pooling layer:
+        # Construct the first convolutional layer:
         # filtering reduces the image size to (64 , 64) - image padded
-        # maxpooling reduces this further to (64/2, 64/2) = (32, 32)
+        # subsampling this further to (64/2, 64/2) = (32, 32)
         # 4D output tensor is thus of shape (batch_size, 64, 32, 32)
         layer_0 = ConvolutionalLayer(
                 input = input_layer,
@@ -34,7 +34,7 @@ class Generator(object):
         self.dropout_layers.append(layer_0)
 
         
-        # maxpooling reduces the size (32 / 2, 32 / 2) = (16, 16)
+        # subsampling the size (32 / 2, 32 / 2) = (16, 16)
         # filter shape: # of filters, filter depth, length, width
         # filter depth should be equal to the input depth shape[1]
         layer_1 = ConvolutionalLayer(
@@ -50,7 +50,7 @@ class Generator(object):
         layer_1_output = layer_1.output(activation = 'lrelu', alpha = 0.2)
         self.dropout_layers.append(layer_1)
 
-        # maxpooling reduces the size (16 / 2, 16 / 2) = (8, 8)
+        # subsampling the size (16 / 2, 16 / 2) = (8, 8)
         # filter shape: # of filters, input depth, filter shape
         layer_2 = ConvolutionalLayer(
                 input = layer_1_output,

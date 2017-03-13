@@ -51,6 +51,8 @@ class ConvolutionalLayer(Layer):
             self.output = T.nnet.relu(output, alpha)
         elif activation == 'tanh':
             self.output = T.tanh(output)
+        elif activation == 'sigm':
+            self.output = T.nnet.sigmoid(output)
         elif activation == None:
             self.output = output
             
