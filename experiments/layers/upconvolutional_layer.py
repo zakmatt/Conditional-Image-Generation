@@ -27,24 +27,13 @@ class UpconvolutionalLayer(Layer):
         # present in convolutional neural networks
         # (where filters are 3D and pool over several input channels)
 
-        '''
-        output = conv2d(
-                input=self.input,
-                filters=self.W,
-                input_shape=self.input_shape,
-                filter_shape=self.filter_shape,
-                border_mode='half',#self.filter_shape[2] - 1,
-                subsample=(1,1),#(self.filter_shape[2], self.filter_shape[2])
-                filter_flip=True
-                                              )
-        '''
         output = conv2d(
                 input = self.input,
                 filters = self.W,
                 input_shape = self.input_shape,
                 filter_shape = self.filter_shape,
-                border_mode = 'half'#self.filter_shape[2] // 2
-                                               )
+                border_mode = 'half'
+                )
 
         #output = self.input
         if self.is_batch_norm:
