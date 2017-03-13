@@ -22,9 +22,15 @@ if __name__ == '__main__':
     inputss = theano.shared(value = np.asanyarray(inputss, dtype = theano.config.floatX))
     x = T.tensor4('x')
     input_x = x.reshape((30, 512, 1, 1))
-    layer = DropoutUpconvLayer(input=input_x, filter_shape= (512, 512, 4, 4),
+
+    layer = DropoutUpconvLayer(input=input_x, filter_shape= (512, 512, 5, 5),
                                  input_shape=(30, 512, 2, 2), 
-                                 is_batch_norm = False,
+                                 is_batch_norm = True,
+                                 scale = 2)
+
+    layer = DropoutUpconvLayer(input=layer.output('relu'), filter_shape= (512, 512, 5, 5),
+                                 input_shape=(30, 512, 4, 4), 
+                                 is_batch_norm = True,
                                  scale = 2)
     #activation = T.ls
     a = theano.function(
@@ -36,4 +42,5 @@ if __name__ == '__main__':
             )
     temp = a()
     print(temp[0, 0])
+    print(temp.shape)
         

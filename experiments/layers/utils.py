@@ -33,6 +33,8 @@ def initialize_bias(filter_shape):
     b = np.zeros((filter_shape[0], ), dtype = theano.config.floatX)
     return b
 
+def bilinear_upsample(X, batch_size, channels, factor):
+   return theano.tensor.nnet.abstract_conv.bilinear_upsampling(X, factor, batch_size=batch_size, num_input_channels=channels)
 
 # From https://github.com/Newmu/dcgan_code/blob/master/lib/ops.py
 

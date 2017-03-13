@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from layer import Layer
+import numpy as np
 import theano
 import theano.tensor as T
 from theano.tensor.nnet import conv2d
@@ -29,8 +30,8 @@ class ConvolutionalLayer(Layer):
                 filters = self.W,
                 input_shape = self.input_shape,
                 filter_shape = self.filter_shape,
-                border_mode = self.filter_shape[2] // 2
-                                               )
+                border_mode = 'half'
+                )
         
         if self.poolsize is not None:
             # pool each feature map individually using maxpooling
@@ -65,12 +66,11 @@ class ConvolutionalLayer(Layer):
 
     
 if __name__ == '__main__':
-    import numpy as np
-    inputss = np.random.randn(30, 3, 64, 64) * 100
+    inputss = np.random.randn(30, 512, 16, 16) * 100
     inputss = theano.shared(value = np.asanyarray(inputss, dtype = theano.config.floatX))
     x = T.tensor4('x')
-    input_x = x.reshape((30, 3, 64, 64))
-    layer = ConvolutionalLayer(input_x, (64, 3, 4, 4), (30, 3, 64, 64), True)
+    input_x = x.reshape((30, 512, 16, 16))
+    layer = ConvolutionalLayer(input_x, (512, 512, 4, 4), (30, 512, 2, 2), True)
 
     #activation = T.ls
     a = theano.function(
@@ -81,3 +81,4 @@ if __name__ == '__main__':
                     }
             )
     temp = a()
+    print(temp.shape)
