@@ -4,7 +4,6 @@ import numpy as np
 import theano
 import theano.tensor as T
 from theano.tensor.nnet import conv2d
-from theano.tensor.signal import pool
 from utils import batchnorm
 
 theano.config.floatX = 'float32'
@@ -12,11 +11,11 @@ theano.config.floatX = 'float32'
 class ConvolutionalLayer(Layer):
     
     def __init__(self, input, filter_shape, input_shape, 
-                 is_batch_norm, poolsize=(2,2)):
+                 is_batch_norm, subsample=(2,2)):
         super().__init__(filter_shape, input_shape, 
                        is_batch_norm)
         self.input = input
-        self.poolsize = poolsize
+        self.subsample = subsample
         
     def output(self, activation, alpha = 0.2):
         
@@ -30,16 +29,9 @@ class ConvolutionalLayer(Layer):
                 filters = self.W,
                 input_shape = self.input_shape,
                 filter_shape = self.filter_shape,
-                border_mode = 'half'
+                border_mode = 'half',
+                subsample = self.subsample
                 )
-        
-        if self.poolsize is not None:
-            # pool each feature map individually using maxpooling
-            output = pool.pool_2d(
-                    input = output,
-                    ds = self.poolsize,
-                    ignore_border = True
-                    )
 
         if self.is_batch_norm:
             self.gamma = theano.shared(value = np.ones(

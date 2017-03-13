@@ -26,7 +26,7 @@ class Generator(object):
                 filter_shape = (64, 3, 5, 5),
                 input_shape = (batch_size, 3, 64, 64),
                 is_batch_norm = True,
-                poolsize = (2, 2)
+                subsample = (2, 2)
                 )
         # create output for Convolutional layer
         # LeakyReLU alpha = 0.2
@@ -42,7 +42,7 @@ class Generator(object):
                 filter_shape = (128, 64, 5, 5),
                 input_shape = (batch_size, 64, 32, 32),
                 is_batch_norm = True,
-                poolsize = (2, 2)
+                subsample = (2, 2)
                 )
         
         # create output for Convolutional layer
@@ -57,7 +57,7 @@ class Generator(object):
                 filter_shape = (256, 128, 5, 5),
                 input_shape = (batch_size, 128, 16, 16),
                 is_batch_norm = True,
-                poolsize = (2, 2)
+                subsample = (2, 2)
                 )
         # LeakyReLU
         layer_2_output = layer_2.output(activation = 'lrelu', alpha = 0.2)
@@ -69,7 +69,7 @@ class Generator(object):
                 filter_shape = (512, 256, 5, 5),
                 input_shape = (batch_size, 256, 8, 8),
                 is_batch_norm = True,
-                poolsize = (2, 2)
+                subsample = (2, 2)
                 )
         
         # LeakyReLU
@@ -82,7 +82,7 @@ class Generator(object):
                 filter_shape = (512, 512, 5, 5),
                 input_shape = (batch_size, 512, 4, 4),
                 is_batch_norm = True,
-                poolsize = (2, 2)
+                subsample = (2, 2)
                 )
         
         # LeakyReLU
@@ -95,7 +95,7 @@ class Generator(object):
                 filter_shape = (512, 512, 5, 5),
                 input_shape = (batch_size, 512, 2, 2),
                 is_batch_norm = True,
-                poolsize = (2, 2)
+                subsample = (2, 2)
                 )
         
         # LeakyReLU

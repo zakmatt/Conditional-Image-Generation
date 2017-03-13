@@ -5,9 +5,9 @@ from utils import dropout_from_layer
 class DropoutConvLayer(ConvolutionalLayer):
     
     def __init__(self, input, filter_shape, input_shape, 
-                 is_batch_norm, poolsize=(2,2)):
+                 is_batch_norm, subsample=(2,2)):
         super().__init__(input, filter_shape, input_shape, 
-                 is_batch_norm, poolsize=(2,2))
+                 is_batch_norm, subsample=(2,2))
         
     def output(self, activation, probability = 0.5, alpha = 0.2):
         output = super().output(activation, alpha)
