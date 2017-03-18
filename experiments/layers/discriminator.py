@@ -61,9 +61,10 @@ class Discriminator(object):
                 subsample = (1, 1)
                 )
         self.layers.append(layer_3)
+        self.discriminator_output = self.layers[-1].output(activation = 'sigm')
         self.params = [param for layer in self.layers 
                        for param in layer.params]
-        
+    '''   
     def output(self, activation):
         if activation == 'tanh':
             self.discriminator_output = self.layers[-1].output(activation = 'tanh')
@@ -75,6 +76,22 @@ class Discriminator(object):
             self.discriminator_output = self.layers[-1].output(activation = None)
             
         return self.discriminator_output
+    '''
+    def output(self):
+        return self.discriminator_output
+    
+    def create_predict(self):
+        contour = T.tensor4('contour')
+        target = T.tensor4('target')
+        predict = theano.function(
+                [contour, target],
+                self.output('sigm'),
+                givens = {
+                        disc_corrupted: contour,
+                        disc_input: target
+                        }
+                )
+        self.predict = predict
 
 '''
 def discriminator(batch_size, discriminator_targets, discriminator_inputs = None):
@@ -153,20 +170,34 @@ if __name__ == '__main__':
     
     #discriminator = Discriminator(disc_input_images, generator_output, 30)
     discriminator = Discriminator(disc_corrupted_images, disc_target_images, 30)
+    #discriminator.create_predict()
     
-    
-    
-    b = theano.function(
+    #cont = T.tensor4('cont')
+    #target = T.tensor4('target')
+    predict_fake = theano.function(
             [],
-            discriminator.output('sigm'),
+            discriminator.output(),
             givens = {
                     disc_corrupted: contour,
                     disc_input: generator_output
                     }
             )
-    discriminator_output = b()
-    print(discriminator_output.shape)
     
+    predict_true = theano.function(
+            [],
+            discriminator.output(),
+            givens = {
+                    disc_corrupted: contour,
+                    disc_input: full_images
+                    }
+            )
+    
+    pred_fake = predict_fake()
+    pred_real = predict_true()
+    #predict_fake = discriminator.predict(contour, generator_output)
+    #predict_real = discriminator.predict(contour, full_images)
+    print('fake shape: ', pred_fake.shape)
+    print('real shape: ', pred_real.shape)
     '''
 
     inputss = np.random.randn(30, 3, 64, 64) * 100
