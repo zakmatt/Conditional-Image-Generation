@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import numpy as np
 import theano
-from utils import initialize_weights, initialize_bias
+from layers.utils import initialize_weights, initialize_bias
 
 class Layer(object):
     

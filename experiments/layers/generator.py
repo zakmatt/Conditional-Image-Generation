@@ -1,7 +1,8 @@
-from convolutional_layer import ConvolutionalLayer
-from upconvolutional_layer import UpconvolutionalLayer
-from dropout_upconv_layer import DropoutUpconvLayer
-from layers_parameters import encoder_params, decoder_params, get_layers_params
+from layers.convolutional_layer import ConvolutionalLayer
+from layers.upconvolutional_layer import UpconvolutionalLayer
+from layers.dropout_upconv_layer import DropoutUpconvLayer
+from layers.layers_parameters import encoder_params, decoder_params, get_layers_params
+import theano.tensor as T
 
 EPS = 1e-12
 
@@ -10,6 +11,7 @@ class Generator(object):
     def __init__(self, input_values, batch_size, encoder_parameters, decoder_parameters):
         
         self.dropout_layers = []
+        self.input_values = input_values
         #self.layers = []
         
         #############
@@ -85,6 +87,10 @@ class Generator(object):
             self.generator_output = self.dropout_layers[-1].output(activation = 'relu')
         else:
             self.generator_output = self.dropout_layers[-1].output(activation = None)
+            
+        # concatenate with input
+        #self.generator_output = T.concatenate([self.generator_output,
+        #                                       self.input_values], axis = 1)
             
         return self.generator_output   
 

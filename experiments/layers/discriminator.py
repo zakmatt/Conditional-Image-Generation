@@ -1,66 +1,42 @@
 #!/usr/bin/env python3
-from convolutional_layer import ConvolutionalLayer
-from generator import Generator
-import theano.tensor as T
+from layers.convolutional_layer import ConvolutionalLayer
+from layers.generator import Generator
+from layers.layers_parameters import encoder_params, decoder_params, discriminator_params, get_layers_params
+
+EPS = 1e-12
 
 class Discriminator(object):
-    def __init__(self, corrupted_images, target_images, batch_size):
+    def __init__(self, input_layer, batch_size, discriminator_parameters):
         
         self.layers = []
-        input_layer = T.concatenate([corrupted_images, target_images], axis = 1)
         
-        # Construct the first convolutional layer:
-        # filtering reduces the image size to (64 , 64) - image padded
-        # subsampling this further to (64/2, 64/2) = (32, 32)
-        # 4D output tensor is thus of shape (batch_size, 64, 32, 32)
-        layer_0 = ConvolutionalLayer(
-                input = input_layer,
-                filter_shape = (64, 6, 5, 5),
-                input_shape = (batch_size, 6, 64, 64),
-                is_batch_norm = True,
-                subsample = (2, 2)
-                )
-        self.layers.append(layer_0)
-        # create output for Convolutional layer
-        # LeakyReLU alpha = 0.2
-        layer_0_output = layer_0.output(activation = 'lrelu', alpha = 0.2)
-        
-        # maxpooling reduces the size (32 / 2, 32 / 2) = (16, 16)
-        # filter shape: # of filters, filter depth, length, width
-        # filter depth should be equal to the input depth shape[1]
-        layer_1 = ConvolutionalLayer(
-                input = layer_0_output, 
-                filter_shape = (128, 64, 5, 5),
-                input_shape = (batch_size, 64, 32, 32),
-                is_batch_norm = True,
-                subsample = (2, 2)
-                )
-        self.layers.append(layer_1)
-        # create output for Convolutional layer
-        # LeakyReLU alpha = 0.2
-        layer_1_output = layer_1.output(activation = 'lrelu', alpha = 0.2)
-        
-        # subsampling the size (16 / 2, 16 / 2) = (8, 8)
-        # filter shape: # of filters, input depth, filter shape
-        layer_2 = ConvolutionalLayer(
-                input = layer_1_output,
-                filter_shape = (256, 128, 5, 5),
-                input_shape = (batch_size, 128, 16, 16),
-                is_batch_norm = True,
-                subsample = (2, 2)
-                )
-        self.layers.append(layer_2)
-        # LeakyReLU
-        layer_2_output = layer_2.output(activation = 'lrelu', alpha = 0.2)
-        
-        layer_3 = ConvolutionalLayer(
-                input = layer_2_output,
-                filter_shape = (30, 256, 5, 5),
-                input_shape = (batch_size, 256, 8, 8),
-                is_batch_norm = False,
-                subsample = (1, 1)
-                )
-        self.layers.append(layer_3)
+        for disc_params in discriminator_parameters[:-1]:
+            filter_shape = disc_params[0]
+            input_shape = disc_params[1]
+            is_batch_norm = disc_params[2]
+            W = disc_params[3]
+            b = disc_params[4]
+            gamma = disc_params[5]
+            beta = disc_params[6]
+            layer = ConvolutionalLayer(input_layer, filter_shape, input_shape,
+                                       is_batch_norm, W = W, b = b,gamma = gamma,
+                                       beta=beta)
+            self.layers.append(layer)
+            input_layer = self.layers[-1].output('lrelu')
+            
+        disc_params = discriminator_parameters[-1]
+        filter_shape = disc_params[0]
+        input_shape = disc_params[1]
+        is_batch_norm = disc_params[2]
+        W = disc_params[3]
+        b = disc_params[4]
+        gamma = disc_params[5]
+        beta = disc_params[6]
+        layer = ConvolutionalLayer(input_layer, filter_shape, input_shape,
+                                   is_batch_norm, W = W, b = b,gamma = gamma,
+                                   beta=beta)
+        self.layers.append(layer)
+
         self.params = [param for layer in self.layers 
                        for param in layer.params]
         
@@ -75,71 +51,57 @@ class Discriminator(object):
             self.discriminator_output = self.layers[-1].output(activation = None)
             
         return self.discriminator_output
-    
-    def _predict_score(self, contour, target):
-        predict = theano.function(
-                [],
-                self.discriminator_output,
-                givens = {
-                        disc_corrupted: contour,
-                        disc_input: target
-                        }
-                )
-        return predict()
+     
 
 if __name__ == '__main__':
     import numpy as np
     import theano
+    import theano.tensor as T
     theano.config.floatX = 'float32'
-        
-    full_images = np.random.randn(30, 3, 64, 64) * 100
-    full_images = theano.shared(value = np.asanyarray(full_images, dtype = theano.config.floatX))
+    BATCH_SIZE = 30
+    encoder_parameters = get_layers_params(BATCH_SIZE, encoder_params)
+    decoder_parameters = get_layers_params(BATCH_SIZE, decoder_params)
+    for pos, dec_params in enumerate(decoder_params):
+        decoder_parameters[pos].append(dec_params[5])
+    discriminator_parameters = get_layers_params(BATCH_SIZE, discriminator_params)
     
-    contour = T.set_subtensor(full_images[:, :, 16:32, 16:32], 0)
+    corrupted_images = T.tensor4('corrupted_images')
+    corrupted_input_images = corrupted_images.reshape((BATCH_SIZE, 3, 64, 64))
     
-    contour_input = T.tensor4('contour_input')
-    contour_input_image = contour_input.reshape((30, 3, 64, 64))
-    generator = Generator(contour_input_image, 30)
-    gen_output = theano.function(
+    oryginal_images = T.tensor4('oryginal_images')
+    oryginal_input_images = oryginal_images.reshape((BATCH_SIZE, 3, 64, 64))
+    
+    generator = Generator(corrupted_input_images, BATCH_SIZE, 
+                          encoder_parameters, decoder_parameters)
+    fake_image = generator.output('tanh')
+    fake_input = T.concatenate([corrupted_input_images, fake_image], axis = 1)
+    predict_fake = Discriminator(fake_input, BATCH_SIZE, discriminator_parameters)
+    real_image = T.concatenate([corrupted_input_images, oryginal_input_images], axis = 1)
+    predict_real = Discriminator(real_image, BATCH_SIZE, discriminator_parameters)
+    
+    oryginal = np.random.randn(30, 3, 64, 64) * 100
+    oryginal = np.asarray(oryginal, dtype = theano.config.floatX)
+    oryginal = theano.shared(value = oryginal,
+                                borrow = True)
+    corrupted = T.set_subtensor(oryginal[:, :, 16:32, 16:32],  0)
+    
+    pred_real = theano.function(
             [],
-            generator.output('tanh'),
+            predict_real.output('sigm'),
             givens = {
-                    contour_input: contour
+                    oryginal_images : oryginal,
+                    corrupted_images: corrupted
                     }
             )
-    generator_output = gen_output()
-    
-    disc_input = T.tensor4('disc_input')
-    disc_target_images = disc_input.reshape((30, 3, 64, 64))
-    
-    disc_corrupted = T.tensor4('disc_corrupted')
-    disc_corrupted_images = disc_corrupted.reshape((30, 3, 64, 64))
-    
-    discriminator = Discriminator(disc_corrupted_images, disc_target_images, 30)
-    discriminator.output('sigm')
-    pred_fake = discriminator._predict_score(contour, generator_output)
-    pred_real = discriminator._predict_score(contour, full_images)
-    '''
-    predict_fake = theano.function(
+    pred_fake = theano.function(
             [],
-            disc_output,
+            predict_fake.output('sigm'),
             givens = {
-                    disc_corrupted: contour,
-                    disc_input: generator_output
-                    }
-            )
-    
-    predict_true = theano.function(
-            [],
-            disc_output,
-            givens = {
-                    disc_corrupted: contour,
-                    disc_input: full_images
+                    corrupted_images: corrupted
                     }
             )
     
-    pred_fake = predict_fake()
-    pred_real = predict_true()
-    '''
-    print('fake shape: ', pred_fake.shape)
-    print('real shape: ', pred_real.shape)
+    fake = pred_fake()
+    real = pred_real()
+    print(real.shape)
+    print(fake.shape)

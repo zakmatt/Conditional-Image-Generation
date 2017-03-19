@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-from layer import Layer
-from layers_parameters import get_layers_params, decoder_params
+from layers.layer import Layer
+from layers.layers_parameters import get_layers_params, decoder_params
 import numpy as np
 import theano
 import theano.tensor as T
 from theano.tensor.nnet import conv2d
-from utils import bilinear_upsample
+from layers.utils import bilinear_upsample
 
 theano.config.floatX = 'float32'
 
@@ -15,7 +15,7 @@ class UpconvolutionalLayer(Layer):
                  is_batch_norm, scale = 2, W = None,
                  b = None, gamma = None, beta = None):
         super().__init__(filter_shape, input_shape, 
-                       is_batch_norm)
+                       is_batch_norm, W, b)
         
         self.scale = scale
         # upsample input scale times

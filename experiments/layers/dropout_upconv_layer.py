@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-from upconvolutional_layer import UpconvolutionalLayer
-from utils import dropout_from_layer
-from layers_parameters import decoder_params, get_layers_params
+from layers.upconvolutional_layer import UpconvolutionalLayer
+from layers.utils import dropout_from_layer
+from layers.layers_parameters import decoder_params, get_layers_params
 
 class DropoutUpconvLayer(UpconvolutionalLayer):
     

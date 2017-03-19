@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import numpy as np
 import theano
-from utils import initialize_weights, initialize_bias
+from layers.utils import initialize_weights, initialize_bias
 
 encoder_params = [[64, 5, 3, 64, True], [128, 5, 64, 32, True],
                   [256, 5, 128, 16, True],[512, 5, 256, 8, True],
@@ -12,7 +12,7 @@ decoder_params = [[512, 5, 512, 2, True, 0.5], [512, 5, 512, 4, True, 0.5],
                   [64, 5, 128, 32, True, 0.5], [3, 5, 64, 64, False, 0.5]]
 
 discriminator_params = [[64, 5, 6, 64, True], [128, 5, 64, 32, True],
-                        [256, 5, 128, 16, True], [512, 5, 256, 8, True]]
+                        [256, 5, 128, 16, True], [30, 5, 256, 8, True]]
 
 def get_layers_params(batch_size, params):
     layers_params = []
