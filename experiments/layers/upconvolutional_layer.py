@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 from layer import Layer
+from layers_parameters import get_layers_params, decoder_params
 import numpy as np
 import theano
 import theano.tensor as T
 from theano.tensor.nnet import conv2d
-from utils import batchnorm, bilinear_upsample
+from utils import bilinear_upsample
 
 theano.config.floatX = 'float32'
 
 class UpconvolutionalLayer(Layer):
     
     def __init__(self, input, filter_shape, input_shape, 
-                 is_batch_norm, scale = 2):
+                 is_batch_norm, scale = 2, W = None,
+                 b = None, gamma = None, beta = None):
         super().__init__(filter_shape, input_shape, 
                        is_batch_norm)
         
@@ -19,6 +21,8 @@ class UpconvolutionalLayer(Layer):
         # upsample input scale times
         upsampled_out = bilinear_upsample(input, input_shape[0], input_shape[1], scale)
         self.input = upsampled_out
+        self.gamma = gamma
+        self.beta = beta
     
     def output(self, activation, alpha = 0.2):
         
@@ -37,14 +41,19 @@ class UpconvolutionalLayer(Layer):
 
         #output = self.input
         if self.is_batch_norm:
-            self.gamma = theano.shared(value = np.ones(
-                    (self.filter_shape[0],), dtype=theano.config.floatX
-                    ), name='gamma')
-            self.beta = theano.shared(value = np.zeros(
-                    (self.filter_shape[0],), dtype=theano.config.floatX
-                    ), name='beta')
-            self.params += [self.gamma, self.beta]
-            output = batchnorm(output, self.gamma, self.beta)
+            if self.gamma is None:
+                self.gamma = theano.shared(value = np.ones(
+                        (self.filter_shape[0],), dtype=theano.config.floatX
+                        ), name='gamma')
+            else:
+                self.gamma = self.gamma
+            
+            if self.beta is None:
+                self.beta = theano.shared(value = np.zeros(
+                        (self.filter_shape[0],), dtype=theano.config.floatX
+                        ), name='beta')
+            else:
+                self.beta = self.beta
             
         output += self.b.dimshuffle('x', 0, 'x', 'x')
         
@@ -60,23 +69,34 @@ class UpconvolutionalLayer(Layer):
         return self.output
     
 if __name__ == '__main__':
-    inputss = np.random.randn(30, 512, 2, 2) * 100
-    inputss = theano.shared(value = np.asanyarray(inputss, dtype = theano.config.floatX))
+    BATCH_SIZE = 30
+    layers_params = get_layers_params(BATCH_SIZE, decoder_params)
     x = T.tensor4('x')
-    input_x = x.reshape((30, 512, 2, 2))
-    layer = UpconvolutionalLayer(input=input_x, filter_shape= (512, 512, 5, 5),
-                                 input_shape=(30, 512, 4, 4), 
-                                 is_batch_norm = True,
-                                 scale = 2)
-    #activation = T.ls
+    input_x = x.reshape((BATCH_SIZE, 512, 1, 1))
+    layers = []    
+    for layer_params in layers_params:
+        filter_shape = layer_params[0]
+        input_shape = layer_params[1]
+        is_batch_norm = layer_params[2]
+        W = layer_params[3]
+        b = layer_params[4]
+        gamma = layer_params[5]
+        beta = layer_params[6]
+        layer = UpconvolutionalLayer(input_x, filter_shape, input_shape,
+                                   is_batch_norm, W = W, b = b,gamma = gamma,
+                                   beta=beta)
+        layers.append(layer)
+        input_x = layers[-1].output('relu')
+    inputss = np.random.randn(BATCH_SIZE, 512, 1, 1) * 100
+    inputss = theano.shared(value = np.asanyarray(inputss, dtype = theano.config.floatX))
     a = theano.function(
             [],
-            layer.output('lrelu'),
+            input_x,
             givens = {
                     x: inputss
                     }
             )
     temp2 = a()
-    print(temp2[0, 0])
+    print(temp2[0, 0, 0, 2])
     print(temp2.shape)
     
