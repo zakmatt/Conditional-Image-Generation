@@ -2,7 +2,6 @@ from layers.convolutional_layer import ConvolutionalLayer
 from layers.upconvolutional_layer import UpconvolutionalLayer
 from layers.dropout_upconv_layer import DropoutUpconvLayer
 from layers.layers_parameters import encoder_params, decoder_params, get_layers_params
-import theano.tensor as T
 
 EPS = 1e-12
 

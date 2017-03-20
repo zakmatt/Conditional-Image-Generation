@@ -2,9 +2,6 @@
 from layers.generator import Generator
 from layers.discriminator import Discriminator
 from layers.layers_parameters import encoder_params, decoder_params, discriminator_params, get_layers_params
-from lib.updates import Adam, Regularizer
-import numpy as np
-import theano
 import theano.tensor as T
 
 EPS = 1e-12
@@ -68,6 +65,9 @@ class Model(object):
         return gen_loss
     
 if __name__ == '__main__':
+    from lib.updates import Adam, Regularizer
+    import numpy as np
+    import theano
     oryginal = np.random.randn(30, 3, 64, 64) * 100
     oryginal = np.asarray(oryginal, dtype = theano.config.floatX)
     oryginal = theano.shared(value = oryginal,
@@ -96,3 +96,13 @@ if __name__ == '__main__':
     gen_updates = generator_updater(gen_params, gen_loss)
     dis_params = model.discriminator_real.params
     dis_updates = discriminator_updater(dis_params, discrm_loss)
+    fake_score = theano.function(
+            [],
+            model.predict_fake,
+            givens = {
+                    corrupted_images: corrupted,
+                    full_images: oryginal
+                    }
+            )
+    fake = fake_score()
+    print(fake.shape)
