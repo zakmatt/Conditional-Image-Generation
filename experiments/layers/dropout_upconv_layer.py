@@ -11,7 +11,7 @@ class DropoutUpconvLayer(UpconvolutionalLayer):
         super().__init__(input, filter_shape, input_shape, is_batch_norm, scale,
                          W, b, gamma, beta)
         
-    def output(self, activation, probability = 0.5, alpha = 0.2):
+    def output(self, activation, alpha = 0.2, probability = 0.5):
         output = super().output(activation, alpha)
         self.output = dropout_from_layer(output, probability)
         return self.output

@@ -11,7 +11,7 @@ class Generator(object):
         
         self.dropout_layers = []
         self.input_values = input_values
-        #self.layers = []
+        self.layers = []
         
         #############
         ## Encoder ##
@@ -25,13 +25,17 @@ class Generator(object):
             b = enc_params[4]
             gamma = enc_params[5]
             beta = enc_params[6]
+            dropout_layer = ConvolutionalLayer(input_values, filter_shape, input_shape,
+                                               is_batch_norm, W = W, b = b,gamma = gamma,
+                                               beta=beta)
             layer = ConvolutionalLayer(input_values, filter_shape, input_shape,
                                        is_batch_norm, W = W, b = b,gamma = gamma,
                                        beta=beta)
-            self.dropout_layers.append(layer)
+            self.dropout_layers.append(dropout_layer)
+            self.layers.append(layer)
             input_values = self.dropout_layers[-1].output('lrelu', alpha = 0.2)
             
-            
+        input_without_dropout = self.layers[-1].output('lrelu', alpha = 0.2)
         #############
         ## Decoder ##
         #############
@@ -46,14 +50,22 @@ class Generator(object):
             beta = dec_params[6]
             dropout = dec_params[7]
             if dropout > 0.0:
-                layer = DropoutUpconvLayer(input_values, filter_shape, input_shape,
-                                           is_batch_norm, W = W, b = b,gamma = gamma,
-                                           beta=beta)
+                dropout_layer = DropoutUpconvLayer(input_values, filter_shape, input_shape,
+                                                   is_batch_norm, W = W, b = b,gamma = gamma,
+                                                   beta=beta)
             else:
-                layer = UpconvolutionalLayer(input_values, filter_shape, input_shape,
-                                             is_batch_norm, W = W, b = b,gamma = gamma,
-                                             beta=beta)
-            self.dropout_layers.append(layer)
+                dropout_layer = UpconvolutionalLayer(input_values, filter_shape, input_shape,
+                                                     is_batch_norm, W = W, b = b,gamma = gamma,
+                                                     beta=beta)
+            # without dropout
+            # if dropout 0.0 then W = W, else W = W * (1 - dropout)
+            layer = UpconvolutionalLayer(input_without_dropout, filter_shape, input_shape,
+                                         is_batch_norm, W = W * (1 - dropout), b = b,gamma = gamma,
+                                         beta=beta)
+            self.layers.append(layer)
+            input_without_dropout = self.layers[-1].output('relu')
+            
+            self.dropout_layers.append(dropout_layer)
             input_values = self.dropout_layers[-1].output('relu')
         
         dec_params = decoder_parameters[-1]
