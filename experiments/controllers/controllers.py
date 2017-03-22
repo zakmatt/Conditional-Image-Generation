@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 import cv2
+import imageio
 import glob
 import numpy as np
 import os
 import theano
+from tqdm import tqdm
 
-import matplotlib.pyplot as plt
 
 EXTENSIONS = ['png', 'jpg']
 theano.config.floatX = 'float32'
@@ -74,10 +75,24 @@ def search_dir(directory):
         dir = os.path.join(dir, '*')
         directories.append(dir)
     return directories
+
+def prepare_data(mode):
+    home = '/Users/admin/studies/DeepLearning/Conditional-Image-Generation/'
+    path = 'inpainting/val2014/' if mode == 'validate' else 'inpainting/train2014/'
+    save_path = 'images.%s' % 'validate.npz' if mode == 'validate' else 'train.npz'
+    print(path, save_path)
+    images = []
+    for fname in tqdm(glob.glob('{}/*.jpg'.format(home+path))):
+        img = imageio.imread(fname)
+        if img.shape == (64, 64, 3) and img.dtype == np.uint8:
+            images.append(img)
+    images = np.array(images)
+    np.savez_compressed('%s%s' % (home, save_path), images)
         
         
 if __name__ == '__main__':
-    path = '../dataset/training'
-    directories = search_dir(path)
+    #path = '../dataset/training'
+    #directories = search_dir(path)
     #print(directories)
-    dataset_x, dataset_y = load_data(directories)
+    #dataset_x, dataset_y = load_data(directories)
+    prepare_data('train')
