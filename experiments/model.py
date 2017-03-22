@@ -106,3 +106,11 @@ if __name__ == '__main__':
             )
     fake = fake_score()
     print(fake.shape)
+    generated = theano.function(
+            [],
+            model.generator_output,
+            givens = {
+                    corrupted_images: corrupted
+                    }
+            )
+    print(generated().shape)

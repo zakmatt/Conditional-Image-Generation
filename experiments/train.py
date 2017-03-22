@@ -11,7 +11,7 @@ BATCH_SIZE = 30
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def train_Adam(full_images, batch_size, n_epochs=200):
-    corrupted_images = T.set_subtensor(oryginal[:, :, 16:32, 16:32],  0)
+    corrupted_images = T.set_subtensor(oryginal[:, :, 16:48, 16:48],  0)
     
     # compute number of minibatches for training
     n_train_batches = full_images.get_value(borrow=True).shape[0]
@@ -87,7 +87,7 @@ if __name__ == '__main__':
     oryginal = np.asarray(oryginal, dtype = theano.config.floatX)
     oryginal = theano.shared(value = oryginal,
                                 borrow = True)
-    corrupted = T.set_subtensor(oryginal[:, :, 16:32, 16:32],  0)
+    corrupted = T.set_subtensor(oryginal[:, :, 16:48, 16:48],  0)
     
     train_Adam(oryginal, BATCH_SIZE)
     

@@ -2,6 +2,7 @@ from layers.convolutional_layer import ConvolutionalLayer
 from layers.upconvolutional_layer import UpconvolutionalLayer
 from layers.dropout_upconv_layer import DropoutUpconvLayer
 from layers.layers_parameters import encoder_params, decoder_params, get_layers_params
+import theano.tensor as T
 
 EPS = 1e-12
 
@@ -11,6 +12,7 @@ class Generator(object):
         
         self.dropout_layers = []
         self.input_values = input_values
+        input_without_dropout = input_values
         self.layers = []
         
         #############
@@ -28,19 +30,20 @@ class Generator(object):
             dropout_layer = ConvolutionalLayer(input_values, filter_shape, input_shape,
                                                is_batch_norm, W = W, b = b,gamma = gamma,
                                                beta=beta)
-            layer = ConvolutionalLayer(input_values, filter_shape, input_shape,
+            layer = ConvolutionalLayer(input_without_dropout, filter_shape, input_shape,
                                        is_batch_norm, W = W, b = b,gamma = gamma,
                                        beta=beta)
+            
             self.dropout_layers.append(dropout_layer)
             self.layers.append(layer)
             input_values = self.dropout_layers[-1].output('lrelu', alpha = 0.2)
-            
-        input_without_dropout = self.layers[-1].output('lrelu', alpha = 0.2)
+            input_without_dropout = self.layers[-1].output('lrelu', alpha = 0.2)
+        
         #############
         ## Decoder ##
         #############
-        
-        for dec_params in decoder_parameters[:-1]:
+        num_encoder_layers = len(self.layers)
+        for decoder_layer, dec_params in enumerate(decoder_parameters[:-1]):
             filter_shape = dec_params[0]
             input_shape = dec_params[1]
             is_batch_norm = dec_params[2]
@@ -49,6 +52,14 @@ class Generator(object):
             gamma = dec_params[5]
             beta = dec_params[6]
             dropout = dec_params[7]
+            
+            skip_layer = num_encoder_layers - decoder_layer - 1
+            
+            if decoder_layer > 0:
+                # change input shape!
+                input_values = T.concatenate([input_values, self.dropout_layers[skip_layer].output], axis=1)
+                input_without_dropout = T.concatenate([input_without_dropout, self.layers[skip_layer].output], axis=1)
+            
             if dropout > 0.0:
                 dropout_layer = DropoutUpconvLayer(input_values, filter_shape, input_shape,
                                                    is_batch_norm, W = W, b = b,gamma = gamma,
@@ -77,6 +88,10 @@ class Generator(object):
         gamma = dec_params[5]
         beta = dec_params[6]
         dropout = dec_params[7]
+        
+        input_values = T.concatenate([input_values, self.dropout_layers[0].output], axis=1)
+        input_without_dropout = T.concatenate([input_without_dropout, self.layers[0].output], axis=1)
+        
         if dropout > 0.0:
             layer = DropoutUpconvLayer(input_values, filter_shape, input_shape,
                                        is_batch_norm, W = W, b = b,gamma = gamma,
