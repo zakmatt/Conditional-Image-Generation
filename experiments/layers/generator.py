@@ -76,8 +76,8 @@ class Generator(object):
             # without dropout
             # if dropout 0.0 then W = W, else W = W * (1 - dropout)
             layer = UpconvolutionalLayer(input_without_dropout, filter_shape, input_shape,
-                                         is_batch_norm, W = dropout_layer.W * (1 - dropout), 
-                                         b = dropout_layer.b, gamma = dropout_layer.gamma, 
+                                         is_batch_norm, W = dropout_layer.W * (1 - dropout),
+                                         b = dropout_layer.b, gamma = dropout_layer.gamma,
                                          beta=dropout_layer.beta)
             self.layers.append(layer)
             input_without_dropout = self.layers[-1].output('relu')
@@ -109,10 +109,13 @@ class Generator(object):
         self.dropout_layers.append(dropout_layer)
         
         layer = UpconvolutionalLayer(input_values, filter_shape, input_shape,
-                                     is_batch_norm, W = dropout_layer.W, 
+                                     is_batch_norm, W = dropout_layer.W * (1 - dropout), 
                                      b = dropout_layer.b, gamma = dropout_layer.gamma,
                                      beta = dropout_layer.beta)
         self.layers.append(layer)
+        
+        self.model_params = [param for layer in self.layers
+                             for param in layer.params]
         
         self.params = [param for layer in self.dropout_layers 
                        for param in layer.params]
@@ -149,7 +152,6 @@ class Generator(object):
         return image()
         
 if __name__ == '__main__':
-    import numpy as np
     import theano
     theano.config.floatX = 'float32'
     BATCH_SIZE = 30

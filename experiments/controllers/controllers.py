@@ -23,6 +23,7 @@ def load_data(directory):
         
         return shared_dataset
     
+    # rescale to 0 - 1, since generator output is tanh
     dataset = np.load(directory).items()[0][1] / 255.
     # swap axes to (number of channels, height, width)
     # primarely its (height, width, number of channels)
@@ -30,7 +31,7 @@ def load_data(directory):
     dataset = np.swapaxes(dataset, 2, 3)
     dataset = shared_dataset(dataset)
     
-    return dataset # RESCALE TO 0-1 !!! Generator ouptut is tanh
+    return dataset
 
 def save_data(dataset, path):
     dataset = rescale(dataset)
@@ -77,9 +78,5 @@ def prepare_data(mode):
         
         
 if __name__ == '__main__':
-    #path = '../dataset/training'
-    #directories = search_dir(path)
-    #print(directories)
-    #dataset_x, dataset_y = load_data(directories)
     prepare_data('train')
     prepare_data('validate')

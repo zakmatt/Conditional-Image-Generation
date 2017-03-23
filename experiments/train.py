@@ -1,21 +1,24 @@
 #!/usr/bin/env python3
-from controllers.controllers import fill_missing_part, load_data, rescale
+import argparse
+from controllers.controllers import fill_missing_part, load_data
 from model import Model
-from lib.updates import Adam, SGD, Regularizer
+from lib.updates import Adam, SGD, RMSprop, Regularizer
 import logging
 import numpy as np
 import os
+import pickle
 import theano
 import theano.tensor as T
 theano.config.floatX = 'float32'
 
-BATCH_SIZE = 1
+BATCH_SIZE = 64
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def train_Adam(full_images, full_validate, batch_size, n_epochs=200):
+def train_model(full_images, full_validate, batch_size, method, save_dir, n_epochs=200):
     
     corrupted_images = T.set_subtensor(full_images[:, :, 16:48, 16:48],  0)
     corrupted_validate = T.set_subtensor(full_validate[:, :, 16:48, 16:48],  0)
+    oryginal_images  = full_images.get_value(borrow=True)
     
     # compute number of minibatches for training
     n_train_batches = full_images.get_value(borrow=True).shape[0]
@@ -34,14 +37,33 @@ def train_Adam(full_images, full_validate, batch_size, n_epochs=200):
     
     discrm_cost = model.discriminator_loss()
     gen_cost = model.generator_loss(1.0, 100.0)
-    generator_updater = Adam(lr=2.0, 
-                             b1=0.5, 
-                             clipnorm=10.,
-                             regularizer=Regularizer(l2=1e-5))
-    discriminator_updater = Adam(lr=2.0, 
+    
+    if method == 'adam':
+        generator_updater = Adam(lr=2.0, 
                                  b1=0.5, 
-                                 clipnorm=10., 
+                                 clipnorm=10.,
                                  regularizer=Regularizer(l2=1e-5))
+        discriminator_updater = Adam(lr=2.0, 
+                                     b1=0.5, 
+                                     clipnorm=10., 
+                                     regularizer=Regularizer(l2=1e-5))
+    elif method == 'rmsprop':
+        generator_updater = RMSprop(lr=2.0,
+                                    clipnorm=10.,
+                                    regularizer=Regularizer(l2=1e-5))
+        discriminator_updater = RMSprop(lr=2.0, 
+                                        rho=0.5, 
+                                        clipnorm=10., 
+                                        regularizer=Regularizer(l2=1e-5))
+    else:
+        generator_updater = SGD(lr=2.0, 
+                                b1=0.5,
+                                clipnorm=10.,
+                                regularizer=Regularizer(l2=1e-5))
+        discriminator_updater = SGD(lr=2.0, 
+                                    b1=0.5, 
+                                    clipnorm=10., 
+                                    regularizer=Regularizer(l2=1e-5))
     gen_params = model.generator.params
     gen_updates = generator_updater(gen_params, gen_cost)
     dis_params = model.discriminator_real.params
@@ -83,55 +105,66 @@ def train_Adam(full_images, full_validate, batch_size, n_epochs=200):
             )    
     # train
     epoch = 0
-    done_looping = False
-    print('start learning')
-    while (epoch < n_epochs) and (not done_looping):
+    logging.info('start training')
+    while (epoch < n_epochs):
         epoch += 1
-        print('epoch: %d' % epoch)
+        logging.info('epoch: %d' % epoch)
+
         for minibatch_index in range(n_train_batches):
             iter = (epoch - 1) * n_train_batches + minibatch_index
-            print('iter: %d' % iter)
+            logging.info('iter: %d' % iter)
 
             cost_gen = train_generator_fn(minibatch_index)
             cost_disc = train_discriminator_fn(minibatch_index)
                    
-            if iter % 5 == 0:
+            if iter % 100 == 0:
                 logging.info('training @ iter = %s' % iter)
                 logging.info('generator cost = %.3f' % cost_gen)
                 logging.info('discriminator cost = %.3f' % cost_disc)
-                
+
         # put images through the network, reshape and save 
         if epoch % 20 == 0:
+            current_images = oryginal_images[minibatch_index * batch_size:(minibatch_index + 1) * batch_size]
             pred = generate_train(minibatch_index)
-            np.save('train_generated_%d.npy' % epoch, pred)
-            pred = fill_missing_part(full_images, pred)
-            np.save('train_generated_filled_%d.npy' % epoch, pred)
+            file_name = 'train_generated_%s_%d.npy' % (method, epoch)
+            np.save(os.path.join(save_dir, file_name), pred)
+            
+            pred = fill_missing_part(current_images, pred)
+            file_name = 'train_generated_filled_%s_%d.npy' % (method, epoch)
+            np.save(os.path.join(save_dir, file_name), pred)
             
             pred = generate_validation(minibatch_index)
-            np.save('validate_generated_%d.npy' % epoch, pred)
-            pred = fill_missing_part(full_validate, pred)
-            np.save('validate_generated_filled_%d.npy' % epoch, pred)
-
+            file_name = 'validate_generated_%s_%d.npy' % (method, epoch)
+            np.save(os.path.join(save_dir, file_name), pred)
+            pred = fill_missing_part(current_images, pred)
+            file_name = 'validate_generated_filled_%s_%d.npy' % (method, epoch)
+            np.save(os.path.join(save_dir, file_name), pred)
+            
+    # saving the model
+    logging.info('Saving...')
+    params = model.generator.model_params
+    params_save_path = os.path.join(save_dir, 'best_model.npz')
+    with open(params_save_path, 'wb') as file:
+        pickle.dump(params, file)
 
 if __name__ == '__main__':
-    data_dir = '/Users/admin/studies/DeepLearning/Conditional-Image-Generation/experiments/dataset/'
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-d",
+                        "--data_directory",
+                        help = 'Directory to the data',
+                        required = True)
+    parser.add_argument("-s",
+                        "--save_directory",
+                        help = 'Saving data directory',
+                        required = True)
+    args = parser.parse_args()
+    data_dir = args.data_directory
+    save_dir = args.save_directory
     training_dataset = os.path.join(data_dir, 'images.train.npz')
     validation_dataset = os.path.join(data_dir, 'images.validate.npz')
     train = load_data(training_dataset)
     validate = load_data(validation_dataset)
-    train = np.load(training_dataset).items()[0][1]
-    validate = np.load(validation_dataset).items()[0][1]
-    
-    #train_2 = np.random.randn(300, 3, 64, 64) * 100
-    #train_2 = np.asarray(train_2, dtype = theano.config.floatX)
-    #train_2 = theano.shared(value = train_2,
-    #                            borrow = True)
-    #validate_2 = np.random.randn(300, 3, 64, 64) * 100
-    #validate_2 = np.asarray(validate_2, dtype = theano.config.floatX)
-    #validate_2 = theano.shared(value = validate_2,
-    #                            borrow = True)    
-    #corrupted = T.set_subtensor(oryginal[:, :, 16:48, 16:48],  0)
-    
-    train_Adam(train, validate, BATCH_SIZE)
+
+    train_model(train, validate, BATCH_SIZE, 'adam', save_dir)
     
     

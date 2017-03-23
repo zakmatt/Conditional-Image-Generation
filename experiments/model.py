@@ -2,6 +2,7 @@
 from layers.generator import Generator
 from layers.discriminator import Discriminator
 from layers.layers_parameters import encoder_params, decoder_params, discriminator_params, get_layers_params
+import pickle
 import theano.tensor as T
 
 EPS = 1e-12
@@ -119,3 +120,8 @@ if __name__ == '__main__':
             )
     print(generated().shape)
     print(generated().dtype)
+    params = model.generator.model_params
+    print(params)
+    params_save_path = 'best_model.p'
+    with open(params_save_path, 'wb') as file:
+        pickle.dump(params, file)

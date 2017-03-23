@@ -5,7 +5,7 @@ import numpy as np
 import theano
 import theano.tensor as T
 from theano.tensor.nnet import conv2d
-from layers.utils import bilinear_upsample
+from layers.utils import bilinear_upsample, batchnorm
 
 theano.config.floatX = 'float32'
 
@@ -39,7 +39,6 @@ class UpconvolutionalLayer(Layer):
                 border_mode = 'half'
                 )
 
-        #output = self.input
         if self.is_batch_norm:
             if self.gamma is None:
                 self.gamma = theano.shared(value = np.ones(
@@ -54,6 +53,9 @@ class UpconvolutionalLayer(Layer):
                         ), name='beta')
             else:
                 self.beta = self.beta
+
+            self.params += [self.gamma, self.beta]
+            output = batchnorm(output, self.gamma, self.beta)
             
         output += self.b.dimshuffle('x', 0, 'x', 'x')
         
