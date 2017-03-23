@@ -1,7 +1,11 @@
 # From https://raw.githubusercontent.com/Newmu/dcgan_code/master/lib/updates.py
+import numpy as np
 import theano
 import theano.tensor as T
-from .utils import floatX
+
+
+def floatX(X):
+    return np.asarray(X, dtype=theano.config.floatX)
 
 # ------------------------
 # Regularization
