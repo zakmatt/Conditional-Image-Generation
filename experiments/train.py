@@ -9,7 +9,7 @@ import theano
 import theano.tensor as T
 theano.config.floatX = 'float32'
 
-BATCH_SIZE = 64
+BATCH_SIZE = 1
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def train_Adam(full_images, full_validate, batch_size, n_epochs=200):

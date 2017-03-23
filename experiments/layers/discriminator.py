@@ -32,8 +32,9 @@ class Discriminator(object):
         b = disc_params[4]
         gamma = disc_params[5]
         beta = disc_params[6]
+        subsample = disc_params[7]
         layer = ConvolutionalLayer(input_layer, filter_shape, input_shape,
-                                   is_batch_norm, W = W, b = b,gamma = gamma,
+                                   is_batch_norm, subsample, W = W, b = b,gamma = gamma,
                                    beta=beta)
         self.layers.append(layer)
 

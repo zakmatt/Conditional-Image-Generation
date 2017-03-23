@@ -5,7 +5,7 @@ from layers.layers_parameters import encoder_params, decoder_params, discriminat
 import theano.tensor as T
 
 EPS = 1e-12
-BATCH_SIZE = 30
+BATCH_SIZE = 1
 
 bce = T.nnet.binary_crossentropy
 
@@ -18,6 +18,9 @@ class Model(object):
         for pos, dec_params in enumerate(decoder_params):
             decoder_parameters[pos].append(dec_params[5])
         discriminator_parameters = get_layers_params(batch_size, discriminator_params)
+        for pos, discrim_params in enumerate(discriminator_params):
+            discriminator_parameters[pos].append(discrim_params[5])
+            
         self.corrupted_images = corrupted_images
         self.full_images = full_images
         
@@ -69,7 +72,7 @@ if __name__ == '__main__':
     from lib.updates import Adam, Regularizer
     import numpy as np
     import theano
-    oryginal = np.random.randn(30, 3, 64, 64) * 100
+    oryginal = np.random.randn(BATCH_SIZE, 3, 64, 64) * 100
     oryginal = np.asarray(oryginal, dtype = theano.config.floatX)
     oryginal = theano.shared(value = oryginal,
                                 borrow = True)
