@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import cv2
 import imageio
 import glob
 import numpy as np
@@ -7,65 +6,49 @@ import os
 import theano
 from tqdm import tqdm
 
-
-EXTENSIONS = ['png', 'jpg']
 theano.config.floatX = 'float32'
 
-def load_data(directories, mask = None):
+def load_data(directory):
     
-    def load_images(directory):
-        image_list = []
-        for filename in glob.glob(directory):
-            ext = filename.split('.')
-            if ext[-1].lower() not in EXTENSIONS:
-                continue
-            print(filename)
-            image = cv2.imread(filename).astype(np.float32)
-            image_list.append(image)
-            
-        return image_list
-    
-    def shared_dataset(dataset, mask, borrow = True):
+    def shared_dataset(dataset, borrow = True):
         """
         Keep dataset in shared variables. This trick allows Theano
         to copy data into the GPU memory, when the code is run on the GPU.
         Since copying everything to the GPU is an overwhelming task, we'll
         copy mini-batches.
         """
-
-        if mask == None:
-            scale = 0.25
-            image = dataset[0]
-            mask = np.ones(image.shape)
-            l = int(scale * image.shape[0]) - 1
-            u = int((1.0 - scale) * image.shape[0])
-            mask[l:u, l:u, :] = 0.0
-
-        # create input and output of the nn
-        dataset_x = dataset * mask
-        # TODO: 
-        # 1. Train on full images
-        # 2. cut just centre part
-        dataset_y = dataset # * (1 - mask)
         # make shared variables of input and output
-        shared_x = theano.shared(np.asanyarray(dataset_x,
-                                               dtype = theano.config.floatX))
-        shared_y = theano.shared(np.asanyarray(dataset_y,
+        shared_dataset = theano.shared(np.asanyarray(dataset,
                                                dtype = theano.config.floatX))
         
-        return shared_x, shared_y
+        return shared_dataset
     
-    image_list = []
-    for directory in directories:
-        images = load_images(directory)
-        if len(image_list) == 0:
-            image_list = np.array(images.copy())
-        else:
-            image_list = np.concatenate((image_list, images.copy()), axis = 0)
+    dataset = np.load(directory).items()[0][1] / 255.
+    # swap axes to (number of channels, height, width)
+    # primarely its (height, width, number of channels)
+    dataset = np.swapaxes(dataset, 1, 3)
+    dataset = np.swapaxes(dataset, 2, 3)
+    dataset = shared_dataset(dataset)
+    
+    return dataset # RESCALE TO 0-1 !!! Generator ouptut is tanh
 
-    dataset_x, dataset_y = shared_dataset(image_list, mask)
-    return dataset_x, dataset_y
-        
+def save_data(dataset, path):
+    dataset = rescale(dataset)
+    dataset = np.swapaxes(dataset, 2, 3)
+    dataset = np.swapaxes(dataset, 1, 3)
+    np.save(path, dataset)
+    
+def fill_missing_part(full_images, generated):
+    full_images[:, :, 16:48, 16:48] = generated[:, :, 16:48, 16:48]
+    return full_images
+
+def rescale(image):
+    image = image.astype('float32')
+    current_min = np.min(image)
+    current_max = np.max(image)
+    image = (image - current_min)/(current_max - current_min) * 255
+    return image.astype('uint8')
+
 def search_dir(directory):
     directories = [os.path.join(directory, '*')]
     for folder_name in os.listdir(directory):
@@ -79,12 +62,15 @@ def search_dir(directory):
 def prepare_data(mode):
     home = '/Users/admin/studies/DeepLearning/Conditional-Image-Generation/'
     path = 'inpainting/val2014/' if mode == 'validate' else 'inpainting/train2014/'
-    save_path = 'images.%s' % 'validate.npz' if mode == 'validate' else 'train.npz'
+    save_path = 'images.%s' % ('validate.npz' if mode == 'validate' else 'train.npz')
     print(path, save_path)
     images = []
     for fname in tqdm(glob.glob('{}/*.jpg'.format(home+path))):
         img = imageio.imread(fname)
         if img.shape == (64, 64, 3) and img.dtype == np.uint8:
+            if np.array_equal(img[:, :, 0], img[:, :, 1]) and \
+                             np.array_equal(img[:, :, 0], img[:, :, 2]):
+                continue
             images.append(img)
     images = np.array(images)
     np.savez_compressed('%s%s' % (home, save_path), images)
@@ -96,3 +82,4 @@ if __name__ == '__main__':
     #print(directories)
     #dataset_x, dataset_y = load_data(directories)
     prepare_data('train')
+    prepare_data('validate')

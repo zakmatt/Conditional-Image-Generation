@@ -25,6 +25,7 @@ class Model(object):
         self.generator = Generator(self.corrupted_images, batch_size,
                                    encoder_parameters, decoder_parameters)
         self.generator_output = self.generator.output('tanh')
+        self.generate_image = self.generator.generate_image('tanh')
         
         # Create discriminator based on generator output
         self.fake_input = T.concatenate([self.corrupted_images, self.generator_output], axis = 1)
@@ -108,9 +109,10 @@ if __name__ == '__main__':
     print(fake.shape)
     generated = theano.function(
             [],
-            model.generator_output,
+            model.generate_image,
             givens = {
                     corrupted_images: corrupted
                     }
             )
     print(generated().shape)
+    print(generated().dtype)

@@ -6,13 +6,10 @@ import theano
 
 theano.config.floatX = 'float32'
 
-def dropout_from_layer(layer, probability = 0.5):
+def dropout_from_layer(layer, rng, probability = 0.5):
     '''
     probability is a probability of droping a unit in a layer
     '''
-    # Set seed for the random numbers
-    np.random.seed(12345)
-    rng = np.random.RandomState(12345)
     theano_rng = T.shared_randomstreams.RandomStreams(
             rng.randint(999999)
             )

@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
+from controllers.controllers import fill_missing_part, load_data, rescale
 from model import Model
 from lib.updates import Adam, SGD, Regularizer
 import logging
 import numpy as np
+import os
 import theano
 import theano.tensor as T
 theano.config.floatX = 'float32'
 
-BATCH_SIZE = 30
+BATCH_SIZE = 64
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def train_Adam(full_images, batch_size, n_epochs=200):
-    corrupted_images = T.set_subtensor(oryginal[:, :, 16:48, 16:48],  0)
+def train_Adam(full_images, full_validate, batch_size, n_epochs=200):
+    
+    corrupted_images = T.set_subtensor(full_images[:, :, 16:48, 16:48],  0)
+    corrupted_validate = T.set_subtensor(full_validate[:, :, 16:48, 16:48],  0)
     
     # compute number of minibatches for training
     n_train_batches = full_images.get_value(borrow=True).shape[0]
@@ -61,7 +65,22 @@ def train_Adam(full_images, batch_size, n_epochs=200):
                     full_images_T: full_images[index * batch_size:(index + 1) * batch_size]
                     }
             )
+
+    generate_train = theano.function(
+            [index],
+            model.generate_image,
+            givens = {
+                    corrupted_images_T: corrupted_images[index * batch_size:(index + 1) * batch_size]
+                    }
+            )
     
+    generate_validation = theano.function(
+            [index],
+            model.generate_image,
+            givens = {
+                    corrupted_images_T: corrupted_validate[index * batch_size:(index + 1) * batch_size]
+                    }
+            )    
     # train
     epoch = 0
     done_looping = False
@@ -77,18 +96,42 @@ def train_Adam(full_images, batch_size, n_epochs=200):
             cost_disc = train_discriminator_fn(minibatch_index)
                    
             if iter % 5 == 0:
-                print('training @ iter = %s' % iter)
-                print('generator cost = %.3f' % cost_gen)
-                print('generator cost = %.3f' % cost_disc)
+                logging.info('training @ iter = %s' % iter)
+                logging.info('generator cost = %.3f' % cost_gen)
+                logging.info('discriminator cost = %.3f' % cost_disc)
                 
+        # put images through the network, reshape and save 
+        if epoch % 20 == 0:
+            pred = generate_train(minibatch_index)
+            np.save('train_generated_%d.npy' % epoch, pred)
+            pred = fill_missing_part(full_images, pred)
+            np.save('train_generated_filled_%d.npy' % epoch, pred)
+            
+            pred = generate_validation(minibatch_index)
+            np.save('validate_generated_%d.npy' % epoch, pred)
+            pred = fill_missing_part(full_validate, pred)
+            np.save('validate_generated_filled_%d.npy' % epoch, pred)
+
 
 if __name__ == '__main__':
-    oryginal = np.random.randn(300, 3, 64, 64) * 100
-    oryginal = np.asarray(oryginal, dtype = theano.config.floatX)
-    oryginal = theano.shared(value = oryginal,
-                                borrow = True)
-    corrupted = T.set_subtensor(oryginal[:, :, 16:48, 16:48],  0)
+    data_dir = '/Users/admin/studies/DeepLearning/Conditional-Image-Generation/experiments/dataset/'
+    training_dataset = os.path.join(data_dir, 'images.train.npz')
+    validation_dataset = os.path.join(data_dir, 'images.validate.npz')
+    train = load_data(training_dataset)
+    validate = load_data(validation_dataset)
+    train = np.load(training_dataset).items()[0][1]
+    validate = np.load(validation_dataset).items()[0][1]
     
-    train_Adam(oryginal, BATCH_SIZE)
+    #train_2 = np.random.randn(300, 3, 64, 64) * 100
+    #train_2 = np.asarray(train_2, dtype = theano.config.floatX)
+    #train_2 = theano.shared(value = train_2,
+    #                            borrow = True)
+    #validate_2 = np.random.randn(300, 3, 64, 64) * 100
+    #validate_2 = np.asarray(validate_2, dtype = theano.config.floatX)
+    #validate_2 = theano.shared(value = validate_2,
+    #                            borrow = True)    
+    #corrupted = T.set_subtensor(oryginal[:, :, 16:48, 16:48],  0)
+    
+    train_Adam(train, validate, BATCH_SIZE)
     
     

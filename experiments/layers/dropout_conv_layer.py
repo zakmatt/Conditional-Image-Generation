@@ -6,14 +6,15 @@ from utils import dropout_from_layer
 class DropoutConvLayer(ConvolutionalLayer):
     
     def __init__(self, input, filter_shape, input_shape, 
-                 is_batch_norm, subsample=(2,2), W = None,
+                 is_batch_norm, rng, subsample=(2,2), W = None,
                  b = None, gamma = None, beta = None):
         super().__init__(input, filter_shape, input_shape, 
                  is_batch_norm, subsample, W, b, gamma, beta)
+        self.rng = rng
         
     def output(self, activation, probability = 0.5, alpha = 0.2):
         output = super().output(activation, alpha)
-        self.output = dropout_from_layer(output, probability)
+        self.output = dropout_from_layer(output, self.rng, probability)
         return self.output
         
 if __name__ == '__main__':
