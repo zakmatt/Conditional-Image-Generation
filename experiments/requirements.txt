@@ -1,0 +1,4 @@
+imageio==2.1.2
+numpy==1.12.1
+Theano==0.8.2
+tqdm==4.11.2
