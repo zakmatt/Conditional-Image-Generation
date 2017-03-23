@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import argparse
 import imageio
 import glob
 import numpy as np
@@ -60,13 +61,11 @@ def search_dir(directory):
         directories.append(dir)
     return directories
 
-def prepare_data(mode):
-    home = '/Users/admin/studies/DeepLearning/Conditional-Image-Generation/'
+def prepare_data(mode, home):
     path = 'inpainting/val2014/' if mode == 'validate' else 'inpainting/train2014/'
     save_path = 'images.%s' % ('validate.npz' if mode == 'validate' else 'train.npz')
-    print(path, save_path)
     images = []
-    for fname in tqdm(glob.glob('{}/*.jpg'.format(home+path))):
+    for fname in tqdm(glob.glob(os.path.join(home, path) + '*')):
         img = imageio.imread(fname)
         if img.shape == (64, 64, 3) and img.dtype == np.uint8:
             if np.array_equal(img[:, :, 0], img[:, :, 1]) and \
@@ -78,5 +77,12 @@ def prepare_data(mode):
         
         
 if __name__ == '__main__':
-    prepare_data('train')
-    prepare_data('validate')
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-d",
+                        "--data_directory",
+                        help = 'Directory to the data',
+                        required = True)
+    args = parser.parse_args()
+    directory = args.data_directory
+    prepare_data('train', directory)
+    prepare_data('validate', directory)
