@@ -69,8 +69,3 @@ def batchnorm(X, g=None, b=None, u=None, s=None, a=1., e=1e-8):
     else:
         raise NotImplementedError
     return X
-
-def discriminator_params():
-    params = []
-    for i in range(4):
-        l

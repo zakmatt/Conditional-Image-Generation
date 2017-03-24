@@ -20,7 +20,8 @@ def load_data(directory):
         """
         # make shared variables of input and output
         shared_dataset = theano.shared(np.asanyarray(dataset,
-                                               dtype = theano.config.floatX))
+                                               dtype = theano.config.floatX),
+                                        borrow = borrow)
         
         return shared_dataset
     
