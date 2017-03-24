@@ -73,7 +73,7 @@ def prepare_data(mode, home):
                 continue
             images.append(img)
     images = np.array(images)
-    np.savez_compressed('%s%s' % (home, save_path), images)
+    np.savez_compressed('%s%s' % os.path.join(home, save_path), images)
         
         
 if __name__ == '__main__':
