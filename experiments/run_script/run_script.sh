@@ -1,6 +1,6 @@
 #!/bin/bash
 #PBS -l nodes=1:ppn=2 -l mem=6gb
-#PBS -l walltime=00:30:00
+#PBS -l walltime=168:00:00
 #PBS -N mzak-ift6266
 #PBS -o /home2/ift6ed68/logs.out
 #PBS -M zak.matthew@yahoo.com
