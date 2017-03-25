@@ -10,28 +10,13 @@ from tqdm import tqdm
 theano.config.floatX = 'float32'
 
 def load_data(directory):
-    
-    def shared_dataset(dataset, borrow = True):
-        """
-        Keep dataset in shared variables. This trick allows Theano
-        to copy data into the GPU memory, when the code is run on the GPU.
-        Since copying everything to the GPU is an overwhelming task, we'll
-        copy mini-batches.
-        """
-        # make shared variables of input and output
-        shared_dataset = theano.shared(np.asanyarray(dataset,
-                                               dtype = theano.config.floatX),
-                                        borrow = borrow)
-        
-        return shared_dataset
-    
     # rescale to 0 - 1, since generator output is tanh
     dataset = np.load(directory).items()[0][1] / 255.
+    dataset = np.array(dataset, dtype = theano.config.floatX)
     # swap axes to (number of channels, height, width)
     # primarely its (height, width, number of channels)
     dataset = np.swapaxes(dataset, 1, 3)
     dataset = np.swapaxes(dataset, 2, 3)
-    dataset = shared_dataset(dataset)
     
     return dataset
 
