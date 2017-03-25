@@ -114,9 +114,11 @@ class Generator(object):
                                      beta = dropout_layer.beta)
         self.layers.append(layer)
         
+        # Parameters without dropout
         self.model_params = [param for layer in self.layers
                              for param in layer.params]
         
+        # Parameters with dropout
         self.params = [param for layer in self.dropout_layers 
                        for param in layer.params]
     

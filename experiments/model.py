@@ -53,8 +53,7 @@ class Model(object):
         #self.predict_real = self.discriminator._predict_score(corrupted_images, self.full_images)
         #self.predict_fake = self.discriminator._predict_score(corrupted_images, self.gen_output)
     
-    def discriminator_loss(self):#, corrupted_images, full_images):
-        #self.compute_outputs(corrupted_images, full_images)
+    def discriminator_loss(self):
         # minimizing -tf.log will try to get inputs to 1
         # predict_real => 1
         # predict_fake => 0
