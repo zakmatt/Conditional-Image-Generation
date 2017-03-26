@@ -56,7 +56,10 @@ def train_model(full_images, full_validate, batch_size, method, save_dir, n_epoc
     macro_batch_full_images = theano.shared(np.empty((BATCH_SIZE, ) + full_images.shape[1:], dtype = theano.config.floatX),
                                             borrow = True)
     macro_batch_corrupted_images = theano.shared(np.empty((BATCH_SIZE, ) + full_images.shape[1:], dtype = theano.config.floatX),
-                                            borrow = True)
+                                                 borrow = True)
+    macro_batch_corrupted_images_val = theano.shared(np.empty((BATCH_SIZE, ) + full_validate.shape[1:], dtype = theano.config.floatX),
+                                                     borrow = True)
+    
     # allocate symbolic variables for the data
     index = T.lscalar()  # index to a microbatch
     corrupted_images_T = T.tensor4('corrupted_images')
@@ -109,7 +112,7 @@ def train_model(full_images, full_validate, batch_size, method, save_dir, n_epoc
             [index],
             model.generate_image,
             givens = {
-                    corrupted_images_T: macro_batch_corrupted_images[index * MICRO_BATCH_SIZE:(index + 1) * MICRO_BATCH_SIZE]
+                    corrupted_images_T: macro_batch_corrupted_images_val[index * MICRO_BATCH_SIZE:(index + 1) * MICRO_BATCH_SIZE]
                     }
             )
     
@@ -159,17 +162,24 @@ def train_model(full_images, full_validate, batch_size, method, save_dir, n_epoc
             file_name = 'train_generated_filled_%s_%d.npy' % (method, epoch)
             np.save(os.path.join(save_dir, file_name), pred)
             
-            pred = generate_validation(micro_batch_index)
+            current_val_images = full_validate[0:batch_size]
+            # current_val_images = current_val_images[0:MICRO_BATCH_SIZE]
+            current_val_images_corrupted = current_val_images
+            current_val_images_corrupted[:, :, 16:48, 16:48] = 0
+            current_val_images = current_val_images[0:MICRO_BATCH_SIZE]
+            macro_batch_corrupted_images_val.set_value(current_val_images_corrupted, borrow = True)
+            
+            pred = generate_validation(0)
             file_name = 'validate_generated_%s_%d.npy' % (method, epoch)
             np.save(os.path.join(save_dir, file_name), pred)
-            pred = fill_missing_part(current_images, pred)
+            pred = fill_missing_part(current_val_images, pred)
             file_name = 'validate_generated_filled_%s_%d.npy' % (method, epoch)
             np.save(os.path.join(save_dir, file_name), pred)
-
+    
     # saving the model
     logging.info('Saving...')
     params = model.generator.model_params
-    params_save_path = os.path.join(save_dir, 'best_model.npz')
+    params_save_path = os.path.join(save_dir, 'best_model.p')
     with open(params_save_path, 'wb') as file:
         pickle.dump(params, file)
 
@@ -190,7 +200,7 @@ if __name__ == '__main__':
     validation_dataset = os.path.join(data_dir, 'images.validate.npz')
     train = load_data(training_dataset)
     validate = load_data(validation_dataset)
-
+    
     train_model(train, validate, BATCH_SIZE, 'adam', save_dir)
     
     
