@@ -11,8 +11,8 @@ import theano
 import theano.tensor as T
 theano.config.floatX = 'float32'
 
-BATCH_SIZE = 128
-MICRO_BATCH_SIZE = 32
+BATCH_SIZE = 12800
+MICRO_BATCH_SIZE = 64
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
