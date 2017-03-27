@@ -131,7 +131,7 @@ def train_model(full_images, full_validate, batch_size, method, save_dir, n_epoc
                     borrow = True
                     )
             macro_batch_corrupted_images.set_value(
-                    T.set_subtensor(macro_batch_full_images[:, :, 1:4, 1:4],  0).eval(),
+                    T.set_subtensor(macro_batch_full_images[:, :, 16:48, 16:48],  0).eval(),
                     borrow = True
                     )
             
@@ -139,8 +139,8 @@ def train_model(full_images, full_validate, batch_size, method, save_dir, n_epoc
             total_gen_cost = 0.
             total_disc_cost = 0.
             for micro_batch_index in range(n_train_micro_batches):
-                total_gen_cost += train_generator_fn(micro_batch_index)
                 total_disc_cost += train_discriminator_fn(micro_batch_index)
+                total_gen_cost += train_generator_fn(micro_batch_index)
                 
             total_gen_cost /= n_train_micro_batches
             total_disc_cost /= n_train_micro_batches
