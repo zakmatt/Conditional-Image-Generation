@@ -12,8 +12,8 @@ import theano.tensor as T
 import time
 theano.config.floatX = 'float32'
 
-BATCH_SIZE = 960
-MICRO_BATCH_SIZE = 32
+BATCH_SIZE = 32
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
@@ -51,26 +51,33 @@ def train_model(training_directories, validation_directories, batch_size, method
     
     logging.info('loading validation set')
     start = time.time()
-    validation_images = load_data(validation_directories[-1])[:MICRO_BATCH_SIZE]
+    
+    # validation
+    validation_images = load_data(validation_directories[-1])[:BATCH_SIZE]
+    
+    
+    validation_images_corrupted = validation_images
+    validation_images_corrupted[:, :, 16:48, 16:48] = 0
+    
     end = time.time()
     logging.info('validation set loaded in %.1fs' % (end - start))
     # macro batch
-    macro_batch_full_images = theano.shared(np.empty((BATCH_SIZE, 3, 64, 64), dtype = theano.config.floatX),
-                                            borrow = True)
-    macro_batch_corrupted_images = theano.shared(np.empty((BATCH_SIZE, 3, 64, 64), dtype = theano.config.floatX),
-                                                 borrow = True)
-    macro_batch_corrupted_images_val = theano.shared(np.empty((BATCH_SIZE, 3, 64, 64), dtype = theano.config.floatX),
-                                                     borrow = True)
+    batch_full_images = theano.shared(np.empty((BATCH_SIZE, 3, 64, 64), dtype = theano.config.floatX),
+                                      borrow = True)
+    batch_corrupted_images = theano.shared(np.empty((BATCH_SIZE, 3, 64, 64), dtype = theano.config.floatX),
+                                           borrow = True)
+    batch_corrupted_images_val = theano.shared(np.array(validation_images_corrupted, dtype = theano.config.floatX),
+                                               borrow = True)
     
     # allocate symbolic variables for the data
     index = T.lscalar()  # index to a microbatch
     corrupted_images_T = T.tensor4('corrupted_images')
-    corrupted_input_images_T = corrupted_images_T.reshape((MICRO_BATCH_SIZE, 3, 64, 64))
+    corrupted_input_images_T = corrupted_images_T.reshape((BATCH_SIZE, 3, 64, 64))
     
     full_images_T = T.tensor4('full_images')
-    full_input_images_T = full_images_T.reshape((MICRO_BATCH_SIZE, 3, 64, 64))
+    full_input_images_T = full_images_T.reshape((BATCH_SIZE, 3, 64, 64))
     
-    model = Model(corrupted_input_images_T, full_input_images_T, MICRO_BATCH_SIZE)
+    model = Model(corrupted_input_images_T, full_input_images_T, BATCH_SIZE)
     
     discrm_cost = model.discriminator_loss()
     gen_cost = model.generator_loss(1.0, 100.0)
@@ -84,37 +91,37 @@ def train_model(training_directories, validation_directories, batch_size, method
     dis_updates = discriminator_updater(dis_params, discrm_cost)
     
     train_generator_fn = theano.function(
-            [index],
+            [],
             gen_cost,
             updates = gen_updates,
             givens = {
-                    corrupted_images_T: macro_batch_corrupted_images[index * MICRO_BATCH_SIZE :(index + 1) * MICRO_BATCH_SIZE],
-                    full_images_T: macro_batch_full_images[index * MICRO_BATCH_SIZE:(index + 1) * MICRO_BATCH_SIZE]
+                    corrupted_images_T: batch_corrupted_images,
+                    full_images_T: batch_full_images
                     }
             )
     train_discriminator_fn = theano.function(
-            [index],
+            [],
             discrm_cost,
             updates = dis_updates,
             givens = {
-                    corrupted_images_T: macro_batch_corrupted_images[index * MICRO_BATCH_SIZE:(index + 1) * MICRO_BATCH_SIZE],
-                    full_images_T: macro_batch_full_images[index * MICRO_BATCH_SIZE:(index + 1) * MICRO_BATCH_SIZE]
+                    corrupted_images_T: batch_corrupted_images,
+                    full_images_T: batch_full_images
                     }
             )
 
     generate_train = theano.function(
-            [index],
+            [],
             model.generate_image,
             givens = {
-                    corrupted_images_T: macro_batch_corrupted_images[index * MICRO_BATCH_SIZE:(index + 1) * MICRO_BATCH_SIZE]
+                    corrupted_images_T: batch_corrupted_images
                     }
             )
     
     generate_validation = theano.function(
-            [index],
+            [],
             model.generate_image,
             givens = {
-                    corrupted_images_T: macro_batch_corrupted_images_val[index * MICRO_BATCH_SIZE:(index + 1) * MICRO_BATCH_SIZE]
+                    corrupted_images_T: batch_corrupted_images_val
                     }
             )
     
@@ -137,36 +144,23 @@ def train_model(training_directories, validation_directories, batch_size, method
             # compute number of minibatches for training
             n_train_batches = full_images.shape[0]
             n_train_batches //= BATCH_SIZE
-            n_train_micro_batches = BATCH_SIZE // MICRO_BATCH_SIZE
             logging.info('Number of batches: %d' % n_train_batches)
-            logging.info('Number of micro-batches: %d' % n_train_micro_batches)
             
             for batch_index in range(n_train_batches):
                 # Create a shared variable of a batch
-                start_time = time.time()
-                macro_batch_full_images.set_value(
-                        full_images[batch_index * batch_size:(batch_index + 1) * batch_size],
-                        borrow = True
-                        )
-                macro_batch_corrupted_images.set_value(
-                        corrupted_images[batch_index * batch_size:(batch_index + 1) * batch_size],
-                        borrow = True
-                        )
-                end_time = time.time()
-                logging.info('injecting data time: %.1fs' % (end_time - start_time))
+                current_full_images = full_images[batch_index * batch_size:(batch_index + 1) * batch_size]
+                batch_full_images.set_value(current_full_images, borrow = True)
+                current_corrupted_images = corrupted_images[batch_index * batch_size:(batch_index + 1) * batch_size]
+                batch_corrupted_images.set_value(current_corrupted_images, borrow = True)
                 
                 # Iterate throught a batch by taking micro batches
                 total_gen_cost = 0.
                 total_disc_cost = 0.
-                for micro_batch_index in range(n_train_micro_batches):
-                    start_time = time.time()
-                    total_disc_cost += train_discriminator_fn(micro_batch_index)
-                    total_gen_cost += train_generator_fn(micro_batch_index)
-                    end_time = time.time()
-                    logging.info('one batch execution time: %.1fs' % (end_time - start_time))
-                    
-                total_gen_cost /= n_train_micro_batches
-                total_disc_cost /= n_train_micro_batches
+                start_time = time.time()
+                total_disc_cost += train_discriminator_fn()
+                total_gen_cost += train_generator_fn()
+                end_time = time.time()
+                logging.info('one batch execution time: %.1fs' % (end_time - start_time))
                 
                 iter = (epoch - 1) * n_train_batches + batch_index
                 if iter % 100 == 0:
@@ -176,21 +170,15 @@ def train_model(training_directories, validation_directories, batch_size, method
                     
         # put images through the network, reshape and save 
         if epoch % 20 == 0:
-            current_images = macro_batch_full_images.get_value(borrow = True)[micro_batch_index * MICRO_BATCH_SIZE:(micro_batch_index + 1) * MICRO_BATCH_SIZE]
-            pred = generate_train(micro_batch_index)
+            pred = generate_train()
             file_name = 'train_generated_%s_%d.npy' % (method, epoch)
             np.save(os.path.join(save_dir, file_name), pred)
             
-            pred = fill_missing_part(current_images, pred)
+            pred = fill_missing_part(current_corrupted_images, pred)
             file_name = 'train_generated_filled_%s_%d.npy' % (method, epoch)
             np.save(os.path.join(save_dir, file_name), pred)
             
-            # validation
-            validation_images_corrupted = validation_images
-            validation_images_corrupted[:, :, 16:48, 16:48] = 0
-            macro_batch_corrupted_images_val.set_value(validation_images_corrupted, borrow = True)
-            
-            pred = generate_validation(0)
+            pred = generate_validation()
             file_name = 'validate_generated_%s_%d.npy' % (method, epoch)
             np.save(os.path.join(save_dir, file_name), pred)
             pred = fill_missing_part(validation_images, pred)
@@ -222,14 +210,10 @@ if __name__ == '__main__':
     train_data_directory = args.train_data_directory
     validation_data_directory = args.validation_data_directory
     save_dir = args.save_directory
+    
     # Get directories of data
     training_directories = search_dir(train_data_directory)
-    #training_dataset = os.path.join(data_dir, 'images.train.npz')
-    # Get directories of data
     validation_directories = search_dir(validation_data_directory)
-    #validation_dataset = os.path.join(data_dir, 'images.validate.npz')
-    #train = load_data(training_dataset)
-    #validate = load_data(validation_dataset)
     
     train_model(training_directories, validation_directories, BATCH_SIZE, 'adam', save_dir)
     
