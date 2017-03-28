@@ -49,8 +49,9 @@ def search_dir(directory):
 
 def prepare_data(mode, home):
     path = 'inpainting/val2014/' if mode == 'validate' else 'inpainting/train2014/'
-    save_path = 'images.%s' % ('validate.npz' if mode == 'validate' else 'train.npz')
+    save_path = 'images.%s' % ('validate' if mode == 'validate' else 'train')
     images = []
+    index = 0
     for fname in tqdm(glob.glob(os.path.join(home, path) + '*')):
         img = imageio.imread(fname)
         if img.shape == (64, 64, 3) and img.dtype == np.uint8:
@@ -58,8 +59,14 @@ def prepare_data(mode, home):
                              np.array_equal(img[:, :, 0], img[:, :, 2]):
                 continue
             images.append(img)
-    images = np.array(images)
-    np.savez_compressed('%s%s' % os.path.join(home, save_path), images)
+            if len(images) >= 10000:
+                images = np.array(images)
+                np.savez_compressed('%s_%d.npz' % (os.path.join(home, save_path), index), images)
+                images = []
+                index += 1
+    if len(images) > 0:
+        images = np.array(images)
+        np.savez_compressed('%s_%d.npz' % (os.path.join(home, save_path), index), images)
         
         
 if __name__ == '__main__':
