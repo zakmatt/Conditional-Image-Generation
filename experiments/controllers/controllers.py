@@ -8,12 +8,10 @@ from os.path import isfile, join
 import theano
 from tqdm import tqdm
 
-theano.config.floatX = 'float32'
-
 def load_data(directory):
     # rescale to 0 - 1, since generator output is tanh
     dataset = np.load(directory).items()[0][1] / 255.
-    dataset = np.array(dataset, dtype = theano.config.floatX)
+    dataset = np.array(dataset, dtype = np.float32)
     # swap axes to (number of channels, height, width)
     # primarely its (height, width, number of channels)
     dataset = np.swapaxes(dataset, 1, 3)
