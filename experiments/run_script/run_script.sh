@@ -14,4 +14,4 @@ module add CUDA/7.5
 
 source /home2/ift6ed68/pyt3.5/bin/activate
 cd /home2/ift6ed68/Conditional-Image-Generation/
-THEANO_FLAGS='floatX=float32,device=gpu' python experiments/train.py -d experiments/dataset -s experiments/
+THEANO_FLAGS='device=cuda,floatX=float32' python experiments/train.py -t experiments/dataset/training_dataset -v experiments/dataset/validation_dataset -s experiments/
