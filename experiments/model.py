@@ -4,9 +4,10 @@ from layers.discriminator import Discriminator
 from layers.layers_parameters import encoder_params, decoder_params, discriminator_params, get_layers_params
 import pickle
 import theano.tensor as T
+import time
 
 EPS = 1e-12
-BATCH_SIZE = 1
+BATCH_SIZE = 32
 
 bce = T.nnet.binary_crossentropy
 
@@ -97,9 +98,12 @@ if __name__ == '__main__':
                                  clipnorm=10., 
                                  regularizer=Regularizer(l2=1e-5))
     gen_params = model.generator.params
+    
+    start = time.time()
     gen_updates = generator_updater(gen_params, gen_loss)
     dis_params = model.discriminator_real.params
     dis_updates = discriminator_updater(dis_params, discrm_loss)
+    print(time.time() - start)
     fake_score = theano.function(
             [],
             model.predict_fake,
