@@ -5,12 +5,12 @@ from layers.utils import initialize_weights, initialize_bias
 
 # first layer with  no batch normalization
 encoder_params = [[64, 5, 3, 64, False], [128, 5, 64, 32, True],
-                  [256, 5, 128, 16, True],[512, 5, 256, 8, True],
-                  [512, 5, 512, 4, True], [512, 5, 512, 2, True]]
+                  [256, 5, 128, 16, True],[512, 5, 256, 8, True]]#,
+                  #[512, 5, 512, 4, True], [512, 5, 512, 2, True]]
 
 # * 2 because of the U-structure
-decoder_params = [[512, 5, 512, 2, True, 0.5], [512, 5, 512*2, 4, True, 0.5],
-                  [256, 5, 512*2, 8, True, 0.5], [128, 5, 256*2, 16, True, 0.0],
+decoder_params = [#[512, 5, 512, 2, True, 0.5], [512, 5, 512*2, 4, True, 0.5],
+                  [256, 5, 256*2, 8, True, 0.5], [128, 5, 256*2, 16, True, 0.5],
                   [64, 5, 128*2, 32, True, 0.0], [3, 5, 64*2, 64, False, 0.0]]
 
 discriminator_params = [[64, 5, 6, 64, True, (2, 2)], [128, 5, 64, 32, True, (2, 2)],
