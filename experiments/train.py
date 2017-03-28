@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import argparse
-from controllers.controllers import fill_missing_part, load_data
+from controllers.controllers import fill_missing_part, load_data, search_dir
 from model import Model
 from lib.updates import Adam, SGD, RMSprop, Regularizer
 import logging
@@ -9,10 +9,11 @@ import os
 import pickle
 import theano
 import theano.tensor as T
+import time
 theano.config.floatX = 'float32'
 
-BATCH_SIZE = 12800
-MICRO_BATCH_SIZE = 64
+BATCH_SIZE = 960
+MICRO_BATCH_SIZE = 32
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
@@ -46,18 +47,19 @@ def set_updaters(method):
         
     return generator_updater, discriminator_updater
 
-def train_model(full_images, full_validate, batch_size, method, save_dir, n_epochs = 200):
-    # compute number of minibatches for training
-    n_train_batches = full_images.shape[0]
-    n_train_batches //= BATCH_SIZE
-    n_train_micro_batches = BATCH_SIZE // MICRO_BATCH_SIZE
+def train_model(training_directories, validation_directories, batch_size, method, save_dir, n_epochs = 200):
     
+    logging.info('loading validation set')
+    start = time.time()
+    validation_images = load_data(validation_directories[-1])[:MICRO_BATCH_SIZE]
+    end = time.time()
+    logging.info('validation set loaded in %.1fs' % (end - start))
     # macro batch
-    macro_batch_full_images = theano.shared(np.empty((BATCH_SIZE, ) + full_images.shape[1:], dtype = theano.config.floatX),
+    macro_batch_full_images = theano.shared(np.empty((BATCH_SIZE, 3, 64, 64), dtype = theano.config.floatX),
                                             borrow = True)
-    macro_batch_corrupted_images = theano.shared(np.empty((BATCH_SIZE, ) + full_images.shape[1:], dtype = theano.config.floatX),
+    macro_batch_corrupted_images = theano.shared(np.empty((BATCH_SIZE, 3, 64, 64), dtype = theano.config.floatX),
                                                  borrow = True)
-    macro_batch_corrupted_images_val = theano.shared(np.empty((BATCH_SIZE, ) + full_validate.shape[1:], dtype = theano.config.floatX),
+    macro_batch_corrupted_images_val = theano.shared(np.empty((BATCH_SIZE, 3, 64, 64), dtype = theano.config.floatX),
                                                      borrow = True)
     
     # allocate symbolic variables for the data
@@ -123,34 +125,55 @@ def train_model(full_images, full_validate, batch_size, method, save_dir, n_epoc
         epoch += 1
         logging.info('epoch: %d' % epoch)
         
-        for batch_index in range(n_train_batches):
+        for train_dir in training_directories:
+            logging.info('loading training set')
+            start = time.time()
+            full_images = load_data(train_dir)
+            end = time.time()
+            logging.info('training set loaded in %.1fs' % (end - start))
             
-            # Create a shared variable of a batch
-            macro_batch_full_images.set_value(
-                    full_images[batch_index * batch_size:(batch_index + 1) * batch_size],
-                    borrow = True
-                    )
-            macro_batch_corrupted_images.set_value(
-                    T.set_subtensor(macro_batch_full_images[:, :, 16:48, 16:48],  0).eval(),
-                    borrow = True
-                    )
+            corrupted_images = full_images
+            corrupted_images[:, :, 16:48, 16:48] = 0
+            # compute number of minibatches for training
+            n_train_batches = full_images.shape[0]
+            n_train_batches //= BATCH_SIZE
+            n_train_micro_batches = BATCH_SIZE // MICRO_BATCH_SIZE
+            logging.info('Number of batches: %d' % n_train_batches)
+            logging.info('Number of micro-batches: %d' % n_train_micro_batches)
             
-            # Iterate throught a batch by taking micro batches
-            total_gen_cost = 0.
-            total_disc_cost = 0.
-            for micro_batch_index in range(n_train_micro_batches):
-                total_disc_cost += train_discriminator_fn(micro_batch_index)
-                total_gen_cost += train_generator_fn(micro_batch_index)
+            for batch_index in range(n_train_batches):
+                # Create a shared variable of a batch
+                start_time = time.time()
+                macro_batch_full_images.set_value(
+                        full_images[batch_index * batch_size:(batch_index + 1) * batch_size],
+                        borrow = True
+                        )
+                macro_batch_corrupted_images.set_value(
+                        corrupted_images[batch_index * batch_size:(batch_index + 1) * batch_size],
+                        borrow = True
+                        )
+                end_time = time.time()
+                logging.info('injecting data time: %.1fs' % (end_time - start_time))
                 
-            total_gen_cost /= n_train_micro_batches
-            total_disc_cost /= n_train_micro_batches
-            
-            iter = (epoch - 1) * n_train_batches + batch_index
-            if iter % 100 == 0:
-                logging.info('training @ iter = %s' % iter)
-                logging.info('generator cost = %.3f' % total_gen_cost)
-                logging.info('discriminator cost = %.3f' % total_disc_cost)
-        
+                # Iterate throught a batch by taking micro batches
+                total_gen_cost = 0.
+                total_disc_cost = 0.
+                for micro_batch_index in range(n_train_micro_batches):
+                    start_time = time.time()
+                    total_disc_cost += train_discriminator_fn(micro_batch_index)
+                    total_gen_cost += train_generator_fn(micro_batch_index)
+                    end_time = time.time()
+                    logging.info('one batch execution time: %.1fs' % (end_time - start_time))
+                    
+                total_gen_cost /= n_train_micro_batches
+                total_disc_cost /= n_train_micro_batches
+                
+                iter = (epoch - 1) * n_train_batches + batch_index
+                if iter % 100 == 0:
+                    logging.info('training @ iter = %s' % iter)
+                    logging.info('generator cost = %.3f' % total_gen_cost)
+                    logging.info('discriminator cost = %.3f' % total_disc_cost)
+                    
         # put images through the network, reshape and save 
         if epoch % 20 == 0:
             current_images = macro_batch_full_images.get_value(borrow = True)[micro_batch_index * MICRO_BATCH_SIZE:(micro_batch_index + 1) * MICRO_BATCH_SIZE]
@@ -162,17 +185,15 @@ def train_model(full_images, full_validate, batch_size, method, save_dir, n_epoc
             file_name = 'train_generated_filled_%s_%d.npy' % (method, epoch)
             np.save(os.path.join(save_dir, file_name), pred)
             
-            current_val_images = full_validate[0:batch_size]
-            # current_val_images = current_val_images[0:MICRO_BATCH_SIZE]
-            current_val_images_corrupted = current_val_images
-            current_val_images_corrupted[:, :, 16:48, 16:48] = 0
-            current_val_images = current_val_images[0:MICRO_BATCH_SIZE]
-            macro_batch_corrupted_images_val.set_value(current_val_images_corrupted, borrow = True)
+            # validation
+            validation_images_corrupted = validation_images
+            validation_images_corrupted[:, :, 16:48, 16:48] = 0
+            macro_batch_corrupted_images_val.set_value(validation_images_corrupted, borrow = True)
             
             pred = generate_validation(0)
             file_name = 'validate_generated_%s_%d.npy' % (method, epoch)
             np.save(os.path.join(save_dir, file_name), pred)
-            pred = fill_missing_part(current_val_images, pred)
+            pred = fill_missing_part(validation_images, pred)
             file_name = 'validate_generated_filled_%s_%d.npy' % (method, epoch)
             np.save(os.path.join(save_dir, file_name), pred)
     
@@ -185,22 +206,31 @@ def train_model(full_images, full_validate, batch_size, method, save_dir, n_epoc
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("-d",
-                        "--data_directory",
-                        help = 'Directory to the data',
+    parser.add_argument("-t",
+                        "--train_data_directory",
+                        help = 'Directory to training data',
+                        required = True)
+    parser.add_argument("-v",
+                        "--validation_data_directory",
+                        help = 'Directory to validation data',
                         required = True)
     parser.add_argument("-s",
                         "--save_directory",
                         help = 'Saving data directory',
                         required = True)
     args = parser.parse_args()
-    data_dir = args.data_directory
+    train_data_directory = args.train_data_directory
+    validation_data_directory = args.validation_data_directory
     save_dir = args.save_directory
-    training_dataset = os.path.join(data_dir, 'images.train.npz')
-    validation_dataset = os.path.join(data_dir, 'images.validate.npz')
-    train = load_data(training_dataset)
-    validate = load_data(validation_dataset)
+    # Get directories of data
+    training_directories = search_dir(train_data_directory)
+    #training_dataset = os.path.join(data_dir, 'images.train.npz')
+    # Get directories of data
+    validation_directories = search_dir(validation_data_directory)
+    #validation_dataset = os.path.join(data_dir, 'images.validate.npz')
+    #train = load_data(training_dataset)
+    #validate = load_data(validation_dataset)
     
-    train_model(train, validate, BATCH_SIZE, 'adam', save_dir)
+    train_model(training_directories, validation_directories, BATCH_SIZE, 'adam', save_dir)
     
     
