@@ -3,7 +3,8 @@ import argparse
 import imageio
 import glob
 import numpy as np
-import os
+from os import listdir
+from os.path import isfile, join
 import theano
 from tqdm import tqdm
 
@@ -38,13 +39,8 @@ def rescale(image):
     return image.astype('uint8')
 
 def search_dir(directory):
-    directories = [os.path.join(directory, '*')]
-    for folder_name in os.listdir(directory):
-        dir = os.path.join(directory, folder_name)
-        if os.path.isfile(dir):
-            continue
-        dir = os.path.join(dir, '*')
-        directories.append(dir)
+    directories = [join(directory, file) for file in listdir(directory) if
+                   isfile(join(directory, file)) and file[-3:] == 'npz']
     return directories
 
 def prepare_data(mode, home):
@@ -52,7 +48,7 @@ def prepare_data(mode, home):
     save_path = 'images.%s' % ('validate' if mode == 'validate' else 'train')
     images = []
     index = 0
-    for fname in tqdm(glob.glob(os.path.join(home, path) + '*')):
+    for fname in tqdm(glob.glob(join(home, path) + '*')):
         img = imageio.imread(fname)
         if img.shape == (64, 64, 3) and img.dtype == np.uint8:
             if np.array_equal(img[:, :, 0], img[:, :, 1]) and \
@@ -61,12 +57,12 @@ def prepare_data(mode, home):
             images.append(img)
             if len(images) >= 10000:
                 images = np.array(images)
-                np.savez_compressed('%s_%d.npz' % (os.path.join(home, save_path), index), images)
+                np.savez_compressed('%s_%d.npz' % (join(home, save_path), index), images)
                 images = []
                 index += 1
     if len(images) > 0:
         images = np.array(images)
-        np.savez_compressed('%s_%d.npz' % (os.path.join(home, save_path), index), images)
+        np.savez_compressed('%s_%d.npz' % (join(home, save_path), index), images)
         
         
 if __name__ == '__main__':
